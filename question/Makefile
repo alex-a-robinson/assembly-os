@@ -6,26 +6,27 @@
  PROJECT_OBJECTS  = $(addsuffix .o, $(basename ${PROJECT_SOURCES}))
  PROJECT_TARGETS  = image.elf image.bin
 
- QEMU_PATH        = /usr
+ QEMU_PATH        = /usr/local/Cellar/qemu/2.8.0
  QEMU_GDB         =        127.0.0.1:1234
  QEMU_UART        = stdio
-#QEMU_UART       += telnet:127.0.0.1:1235,server
-#QEMU_UART       += telnet:127.0.0.1:1236,server
- QEMU_DISPLAY     = -nographic -display none 
+ QEMU_UART       += telnet:127.0.0.1:1235,server
+ QEMU_UART       += telnet:127.0.0.1:1236,server
+ QEMU_DISPLAY     = -nographic -display none
 #QEMU_DISPLAY     =            -display  sdl
 
- LINARO_PATH      = /usr/local/gcc-linaro-5.1-2015.08-x86_64_arm-eabi
- LINARO_PREFIX    = arm-eabi
+ LINARO_PATH      = /usr/local/Cellar/gcc-arm-none-eabi/20160928
+ LINARO_PREFIX    = arm-none-eabi
 
 # part 2: build commands
 
 %.o   : %.s
-	@${LINARO_PATH}/bin/${LINARO_PREFIX}-as  $(addprefix -I , ${PROJECT_PATH} ${LINARO_PATH}/arm-eabi/libc/usr/include) -mcpu=cortex-a8                                       -g       -o ${@} ${<}
+	@${LINARO_PATH}/bin/${LINARO_PREFIX}-as  $(addprefix -I , ${PROJECT_PATH} ${LINARO_PATH}/arm-none-eabi/include) -mcpu=cortex-a8                                       -g       -o ${@} ${<}
 %.o   : %.c
-	@${LINARO_PATH}/bin/${LINARO_PREFIX}-gcc $(addprefix -I , ${PROJECT_PATH} ${LINARO_PATH}/arm-eabi/libc/usr/include) -mcpu=cortex-a8 -mabi=aapcs -ffreestanding -std=gnu99 -g -c -O -o ${@} ${<}
+	@${LINARO_PATH}/bin/${LINARO_PREFIX}-gcc $(addprefix -I , ${PROJECT_PATH} ${LINARO_PATH}/arm-none-eabi/include) -mcpu=cortex-a8 -mabi=aapcs -ffreestanding -std=gnu99 -g -c -O -o ${@} ${<}
 
 %.elf : ${PROJECT_OBJECTS}
-	@${LINARO_PATH}/bin/${LINARO_PREFIX}-ld  $(addprefix -L ,                 ${LINARO_PATH}/arm-eabi/libc/usr/lib    ) -T ${*}.ld -o ${@} ${^} -lc -lgcc
+	@${LINARO_PATH}/bin/${LINARO_PREFIX}-ld  $(addprefix -L , ${LINARO_PATH}/lib/gcc/arm-none-eabi/5.4.1) $(addprefix -L, ${LINARO_PATH}/arm-none-eabi/lib) -T ${*}.ld -o ${@} ${^} -lc -lgcc
+
 %.bin : %.elf
 	@${LINARO_PATH}/bin/${LINARO_PREFIX}-objcopy -O binary ${<} ${@}
 
@@ -36,16 +37,17 @@
 build       : ${PROJECT_TARGETS}
 
 launch-qemu : ${PROJECT_TARGETS}
-	@${QEMU_PATH}/bin/qemu-system-arm -M realview-pb-a8 -m 128M ${QEMU_DISPLAY} -gdb tcp:${QEMU_GDB} $(addprefix -serial , ${QEMU_UART}) -S -kernel $(filter %.bin, ${PROJECT_TARGETS})
+	# $(addprefix -serial , ${QEMU_UART})
+	@${QEMU_PATH}/bin/qemu-system-arm -M realview-pb-a8 -m 128M ${QEMU_DISPLAY} -gdb tcp:${QEMU_GDB}  -S -kernel $(filter %.bin, ${PROJECT_TARGETS})
 
 launch-gdb  : ${PROJECT_TARGETS}
 	@${LINARO_PATH}/bin/${LINARO_PREFIX}-gdb -ex "file $(filter %.elf, ${PROJECT_TARGETS})" -ex "target remote ${QEMU_GDB}"
 
 kill-qemu   :
-	@-killall --quiet --user ${USER} qemu-system-arm
+	@-killall KILL qemu-system-arm
 
 kill-gdb    :
-	@-killall --quiet --user ${USER} ${LINARO_PREFIX}-gdb
+	@-killall KILL ${LINARO_PREFIX}-gdb
 
 clean       :
 	@rm -f core ${PROJECT_OBJECTS} ${PROJECT_TARGETS}
