@@ -44,6 +44,10 @@ pid_t next_pid() {
 
 // Switch current process
 void switch_to_pid(ctx_t* ctx, pid_t pid) {
+    // No need to switch if current
+    if (current->pid == pid) {
+        return;
+    }
     memcpy(&current->ctx, ctx, sizeof(ctx_t)); // save current state
     current = &pcb[pid-1];
     memcpy(ctx, &current->ctx, sizeof(ctx_t)); // update new state
