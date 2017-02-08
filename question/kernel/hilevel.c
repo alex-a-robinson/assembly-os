@@ -11,22 +11,49 @@ uint32_t sps[] = {(uint32_t)(&tos_P1), (uint32_t)(&tos_P2), (uint32_t)(&tos_P3)}
 // Programs
 extern void main_console();
 
-void scheduler(ctx_t* ctx) {
-    memcpy(&current->ctx, ctx, sizeof(ctx_t));
+// Find a pid which is free, 0 for error
+pid_t free_pid() {
+    for (int p_index=0; p_index < MAX_PROCESSES; p_index++) {
+        if (pcb[p_index].ctx.pc == 0) {
+            return p_index + 1; // pid
+        }
+    }
 
-    // Loop through all processes until finds incomplete one
+    return 0; // indicating an error
+}
+
+// Implements scheduling algorithm, NOTE loops if all processes finished
+pid_t next_pid() {
     int p_index = current->pid-1;
     do {
         p_index = (p_index + 1) % MAX_PROCESSES;
-        current = &pcb[p_index];
-    } while (current->ctx.pc == 0); // Infinite if all processes finsiehd
+    } while (pcb[p_index].ctx.pc == 0); // Infinite if all processes finsiehd
 
-    memcpy(ctx,&current->ctx, sizeof(ctx_t));
+    return p_index;
+}
 
+// Switch current process
+void switch_to_pid(ctx_t* ctx, pid_t pid) {
+    memcpy(&current->ctx, ctx, sizeof(ctx_t)); // save current state
+    current = &pcb[pid-1];
+    memcpy(ctx, &current->ctx, sizeof(ctx_t)); // update new state
     return;
 }
 
-void reset_ctx(ctx_t* ctx, uint32_t pid) {//, void* sp) {
+// Load the current ctx into the ctx
+void reload_current_ctx(ctx_t* ctx) {
+    memcpy(ctx, &current->ctx, sizeof(ctx_t));
+    return;
+}
+
+// Select the next process and switch to it
+void scheduler(ctx_t* ctx) {
+    pid_t pid = next_pid();
+    switch_to_pid(ctx, pid);
+    return;
+}
+
+void reset_ctx(ctx_t* ctx, pid_t pid) {//, void* sp) {
     /* The CPSR value of 0x50 means the processor is switched into USR
     *   mode, with IRQ interrupts enabled, and
     * - the PC and SP values matche the entry point and top of stack.
@@ -45,6 +72,7 @@ void hilevel_handler_rst(ctx_t* ctx) {
     for (int i=0; i < MAX_PROCESSES; i++) {
         memset(&pcb[i], 0, sizeof(pcb_t));
         pcb[i].pid = i+1;
+        pcb[i].ppid = 0; // Default to 0 ppid
         reset_ctx(&pcb[i].ctx, pcb[i].pid);
     }
 
@@ -72,24 +100,8 @@ void hilevel_handler_rst(ctx_t* ctx) {
     TIMER0->Timer1Ctrl |= 0x00000020; // enable          timer interrupt
     TIMER0->Timer1Ctrl |= 0x00000080; // enable          timer
 
-    /* Configure the mechanism for interrupt handling by
-    *
-    * - configuring UART st. an interrupt is raised every time a byte is
-    *   subsequently received,
-    * - configuring GIC st. the selected interrupts are forwarded to the
-    *   processor via the IRQ interrupt signal, then
-    * - enabling IRQ interrupts.
-    */
-
-    //UART0->IMSC       |= 0x00000010; // enable UART    (Rx) interrupt
-    //UART0->CR          = 0x00000301; // enable UART (Tx+Rx)
-
-
     GICC0->PMR = 0x000000F0; // unmask all            interrupts
-
-    //GICD0->ISENABLER1 |= 0x00001000; // enable UART    (Rx) interrupt
     GICD0->ISENABLER1 |= 0x00000010; // enable timer          interrupt
-
     GICC0->CTLR = 0x00000001; // enable GIC interface
     GICD0->CTLR = 0x00000001; // enable GIC distributor
 
@@ -109,18 +121,6 @@ void hilevel_handler_irq(ctx_t* ctx) {
         scheduler(ctx);
         TIMER0->Timer1IntClr = 0x01;
     }
-    // } else if (id == GIC_SOURCE_UART0) { // Keyboard?
-    //     uint8_t x = PL011_getc( UART0, true );
-    //
-    //     // TODO Testing by putting it on the screen
-    //     PL011_putc( UART0, 'K',                      true );
-    //     PL011_putc( UART0, '<',                      true );
-    //     PL011_putc( UART0, itox( ( x >> 4 ) & 0xF ), true );
-    //     PL011_putc( UART0, itox( ( x >> 0 ) & 0xF ), true );
-    //     PL011_putc( UART0, '>',                      true );
-    //
-    //     UART0->ICR = 0x10;
-    // }
 
     // Step 5: write the interrupt identifier to signal we're done.
 
@@ -139,15 +139,30 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
     */
 
     switch (id) {
-        case SYS_FORK: {
-            // TODO
-            /* Upon successful completion, fork() returns a value of 0
-            * to the child process and returns the process ID of the
-            * child process to the parent process. Otherwise, a value
-            * of -1 is returned to the parent process, no child process
-            * is created, and the global variable [errno][1] is set to
-            * indicate the error. */
-            ctx->gpr[0] = 0; // TODO See above note
+        case SYS_FORK: { // https://linux.die.net/man/2/fork
+            // NOTE what to do about file descriptors?
+            pid_t pid = free_pid();
+
+            // If no pid, return an error
+            if (pid == 0) {
+                current->ctx.gpr[0] = -1;
+                break;
+            }
+
+            // Copy the process
+            pcb_t* new_process = &pcb[pid-1];
+            memcpy(new_process, current, sizeof(pcb_t));
+
+            // Update its pid and ppid
+            new_process->pid = pid;
+            new_process->ppid = current->pid;
+
+            // Return child pid to parent and 0 to child
+            current->ctx.gpr[0] = pid;
+            new_process->ctx.gpr[0] = 0;
+
+            // Switch to the new process
+            switch_to_pid(pid);
             break;
         }
         case SYS_EXIT: {
@@ -179,8 +194,8 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
                 // TODO Unknown signal x
             }
 
-            // If killing current proccess, reset ctx and run scheduler,
-            // otherwise update proccesses ctx so when scheduler next run
+            // If killing current process, reset ctx and run scheduler,
+            // otherwise update processes ctx so when scheduler next run
             // it will be free
             if (current->pid == pid) {
                 reset_ctx(ctx, pid);
@@ -229,16 +244,13 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             scheduler(ctx);
             break;
         }
-        case SYS_EXEC: {
+        case SYS_EXEC: { // https://linux.die.net/man/3/exec
             void* x = (void*)(ctx->gpr[0]); // start executing program at address x e.g. &main_P3
-            // TODO
-            for (int i=0; i < MAX_PROCESSES; i++) {
-                if (pcb[i].ctx.pc == 0) {
-                    pcb[i].ctx.pc = (uint32_t)(x);
-                    return; // Successfully dded to queue
-                }
-            }
-            return; // Failed to add to queue
+
+            // Reset current ctx, update pc to new program, and reload the ctx
+            reset_ctx(&current->ctx, current->pid);
+            current->ctx.pc = (uint32_t)(x);
+            reload_current_ctx(ctx);
 
             break;
         }
