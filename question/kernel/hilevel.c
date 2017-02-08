@@ -56,10 +56,10 @@ void hilevel_handler_rst(ctx_t* ctx) {
     */
 
     // Load console as first process
-    //pcb[0].ctx.pc = (uint32_t)(&main_console);
+    pcb[1].ctx.pc = (uint32_t)(&main_console);
     pcb[0].ctx.pc = (uint32_t)(&main_P3); // TODO rmeove
-    pcb[1].ctx.pc = (uint32_t)(&main_P4); // TODO rmeove
-    pcb[2].ctx.pc = (uint32_t)(&main_P5); // TODO rmeove
+    //pcb[1].ctx.pc = (uint32_t)(&main_P4); // TODO rmeove
+    //pcb[2].ctx.pc = (uint32_t)(&main_P5); // TODO rmeove
     current = &pcb[0];
     memcpy(ctx, &current->ctx, sizeof(ctx_t));
 
@@ -78,8 +78,24 @@ void hilevel_handler_rst(ctx_t* ctx) {
     TIMER0->Timer1Ctrl |= 0x00000020; // enable          timer interrupt
     TIMER0->Timer1Ctrl |= 0x00000080; // enable          timer
 
+    /* Configure the mechanism for interrupt handling by
+    *
+    * - configuring UART st. an interrupt is raised every time a byte is
+    *   subsequently received,
+    * - configuring GIC st. the selected interrupts are forwarded to the
+    *   processor via the IRQ interrupt signal, then
+    * - enabling IRQ interrupts.
+    */
+
+    UART0->IMSC       |= 0x00000010; // enable UART    (Rx) interrupt
+    UART0->CR          = 0x00000301; // enable UART (Tx+Rx)
+
+
     GICC0->PMR = 0x000000F0; // unmask all            interrupts
+
+    GICD0->ISENABLER1 |= 0x00001000; // enable UART    (Rx) interrupt
     GICD0->ISENABLER1 |= 0x00000010; // enable timer          interrupt
+
     GICC0->CTLR = 0x00000001; // enable GIC interface
     GICD0->CTLR = 0x00000001; // enable GIC distributor
 
@@ -95,9 +111,20 @@ void hilevel_handler_irq(ctx_t* ctx) {
 
     // Step 4: handle the interrupt, then clear (or reset) the source.
 
-    if (id == GIC_SOURCE_TIMER0) {
+    if (id == GIC_SOURCE_TIMER0) { // Timer
         scheduler(ctx);
         TIMER0->Timer1IntClr = 0x01;
+    } else if (id == GIC_SOURCE_UART0) { // Keyboard?
+        uint8_t x = PL011_getc( UART0, true );
+
+        // TODO Testing by putting it on the screen
+        PL011_putc( UART0, 'K',                      true );
+        PL011_putc( UART0, '<',                      true );
+        PL011_putc( UART0, itox( ( x >> 4 ) & 0xF ), true );
+        PL011_putc( UART0, itox( ( x >> 0 ) & 0xF ), true );
+        PL011_putc( UART0, '>',                      true );
+
+        UART0->ICR = 0x10;
     }
 
     // Step 5: write the interrupt identifier to signal we're done.
@@ -139,8 +166,9 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
                 // TODO unkown status code x
             }
 
+            // Reset ctx (scheduler will update current with this) and run scheduler
             reset_ctx(ctx, current->pid);
-            scheduler(ctx); // On exit use the scheduler to find the next program
+            scheduler(ctx);
             break;
         }
         case SYS_KILL: {
