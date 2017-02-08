@@ -38,8 +38,10 @@ typedef struct {
 typedef struct {
   pid_t pid;
   ctx_t ctx;
-  int complete;
 } pcb_t;
+
+// Max number of processes
+#define MAX_PROCESSES 3
 
 /* The definitions below capture symbolic constants within these classes:
  *

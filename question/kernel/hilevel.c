@@ -1,6 +1,6 @@
 #include "hilevel.h"
 
-pcb_t pcb[3], *current = NULL;
+pcb_t pcb[MAX_PROCESSES], *current = NULL;
 
 void scheduler(ctx_t* ctx) {
     memcpy(&current->ctx, ctx, sizeof(ctx_t));
@@ -8,21 +8,24 @@ void scheduler(ctx_t* ctx) {
     // Loop through all processes until finds incomplete one
     int p_index = current->pid - 1;
     do {
-        p_index = (p_index + 1) % 3;
-        current =&pcb[p_index];
-    } while (current->complete == 1); // Infinite if all processes finsiehd
+        p_index = (p_index + 1) % MAX_PROCESSES;
+        current = &pcb[p_index];
+    } while (current->ctx.pc == 0); // Infinite if all processes finsiehd
 
     memcpy(ctx,&current->ctx, sizeof(ctx_t));
 
     return;
 }
 
-extern void main_P3();
+// Programs
+extern void main_console();
+extern void main_P3(); // TODO REMOVE
+
+// Stacks
+extern uint32_t tos_P1;
+extern uint32_t tos_P2;
 extern uint32_t tos_P3;
-extern void main_P4();
-extern uint32_t tos_P4;
-extern void main_P5();
-extern uint32_t tos_P5;
+
 
 void hilevel_handler_rst(ctx_t* ctx) {
     /* Initialise PCBs representing processes stemming from execution of
@@ -33,31 +36,33 @@ void hilevel_handler_rst(ctx_t* ctx) {
      * - the PC and SP values matche the entry point and top of stack.
      */
 
+    // TODO use MAX_PROCESSES and a loop
+
     memset(&pcb[0], 0, sizeof(pcb_t));
     pcb[0].pid = 1;
-    pcb[0].complete = 0;
     pcb[0].ctx.cpsr = 0x50;
-    pcb[0].ctx.pc = (uint32_t)(&main_P3);
-    pcb[0].ctx.sp = (uint32_t)(&tos_P3);
+    pcb[0].ctx.pc = 0;
+    pcb[0].ctx.sp = (uint32_t)(&tos_P1);
 
     memset(&pcb[1], 0, sizeof(pcb_t));
     pcb[1].pid = 2;
-    pcb[1].complete = 0;
     pcb[1].ctx.cpsr = 0x50;
-    pcb[1].ctx.pc = (uint32_t)(&main_P4);
-    pcb[1].ctx.sp = (uint32_t)(&tos_P4);
+    pcb[1].ctx.pc = 0;
+    pcb[1].ctx.sp = (uint32_t)(&tos_P2);
 
     memset(&pcb[2], 0, sizeof(pcb_t));
     pcb[2].pid = 3;
-    pcb[2].complete = 0;
     pcb[2].ctx.cpsr = 0x50;
-    pcb[2].ctx.pc = (uint32_t)(&main_P5);
-    pcb[2].ctx.sp = (uint32_t)(&tos_P5);
+    pcb[2].ctx.pc = 0;
+    pcb[2].ctx.sp = (uint32_t)(&tos_P3);
 
     /* Once the PCBs are initialised, we (arbitrarily) select one to be
      * restored (i.e., executed) when the function then returns.
      */
 
+    // Load console as first process
+    //pcb[0].ctx.pc = (uint32_t)(&main_console);
+    pcb[0].ctx.pc = (uint32_t)(&main_P3); // TODO rmeove
     current = &pcb[0];
     memcpy(ctx, &current->ctx, sizeof(ctx_t));
 
@@ -137,7 +142,8 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
                 // TODO unkown status code x
             }
 
-            current->complete = 1; // set process to complete
+            // TODO cleanup the memory
+            current->ctx.pc = 0; // mark this process resourse as free
             scheduler(ctx); // On exit use the scheduler to find the next program
             break;
         }
@@ -149,10 +155,14 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             if (x == SIG_TERM) {
                 // TODO Terminate
             } else if (x == SIG_QUIT) {
-                // TODO Quite
+                // TODO Quit
             } else {
                 // TODO Unknown signal x
             }
+
+            // TODO cleanup the memory
+            pcb[pid-1].ctx.pc = 0; // mark this process resourse as free
+            scheduler(ctx); // Schedule next
 
             ctx->gpr[0] = 0; // TODO result of exit meaningless?
             break;
@@ -177,6 +187,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             int n = (int)(ctx->gpr[2]); // number of bytes
             // TODO use differnt file handlers
 
+            // TODO test this works
             for (int i = 0; i < n; i++) {
                 x[i] = PL011_getc(UART1, true);
 
@@ -190,12 +201,20 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             break;
         }
         case SYS_YIELD: {
-            // TODO
+            scheduler(ctx);
             break;
         }
         case SYS_EXEC: {
             void* x = (void*)(ctx->gpr[0]); // start executing program at address x e.g. &main_P3
             // TODO
+            for (int i=0; i < MAX_PROCESSES; i++) {
+                if (pcb[i].ctx.pc == 0) {
+                    pcb[i].ctx.pc = (uint32_t)(x);
+                    return; // Successfully dded to queue
+                }
+            }
+            return; // Failed to add to queue
+
             break;
         }
         default: { // 0x?? => unknown/unsupported
