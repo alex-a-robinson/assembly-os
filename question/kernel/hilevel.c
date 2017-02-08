@@ -39,7 +39,7 @@ pid_t next_pid() {
         p_index = (p_index + 1) % MAX_PROCESSES;
     } while (pcb[p_index].ctx.pc == 0); // Infinite if all processes finsiehd
 
-    return p_index;
+    return p_index+1;
 }
 
 // Switch current process
