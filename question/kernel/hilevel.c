@@ -115,7 +115,28 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
    */
 
   switch( id ) {
-    case SYS_WRITE : { // 0x01 => write( fd, x, n )
+
+
+    case SYS_FORK : {
+        // TODO
+        pid_t pid = NULL;
+        ctx->gpr[ 0 ] = pid; // pid of forked process
+        break;
+    }
+    case SYS_EXIT : {
+        int x = (int)(ctx->gpr[ 0 ]); // return code
+        current->complete = 1; // set process to complete
+        scheduler( ctx ); // On exit use the scheduler to find the next program
+        break;
+    }
+    case SYS_KILL : {
+        int   pid = ( int   )( ctx->gpr[ 0 ] );
+        int     x = (int)( ctx->gpr[ 1 ] );
+        // TODO
+        ctx->gpr[ 0 ] = n; // result?
+        break;
+    }
+    case SYS_WRITE : {
       int   fd = ( int   )( ctx->gpr[ 0 ] );
       char*  x = ( char* )( ctx->gpr[ 1 ] );
       int    n = ( int   )( ctx->gpr[ 2 ] );
@@ -127,10 +148,22 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
       ctx->gpr[ 0 ] = n;
       break;
     }
-    case SYS_EXIT : {
-        int x = (int)(ctx->gpr[ 0 ]); // return code
-        current->complete = 1; // set process to complete
-        scheduler( ctx ); // On exit use the scheduler to find the next program
+    case SYS_YIELD : {
+        // TODO
+        break;
+    }
+    case SYS_EXEC : {
+        void* x = (void*)(ctx->gpr[0]); // function pointer to program to execute e.g. main_P3
+        // TODO
+        ctx->gpr[ 0 ] = n; // pid?
+        break;
+    }
+    case SYS_READ : {
+        int   fd = ( int   )( ctx->gpr[ 0 ] );
+        char*  x = ( char* )( ctx->gpr[ 1 ] );
+        int    n = ( int   )( ctx->gpr[ 2 ] );
+        // TODO
+        ctx->gpr[ 0 ] = n;
         break;
     }
     default   : { // 0x?? => unknown/unsupported
