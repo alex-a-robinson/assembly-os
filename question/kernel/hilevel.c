@@ -93,7 +93,7 @@ void hilevel_handler_rst(ctx_t* ctx) {
     // Load console as first process
     pcb[0].ctx.pc = (uint32_t)(&main_console);
     current = &pcb[0];
-    memcpy(ctx, &current->ctx, sizeof(ctx_t));
+    reload_current_ctx(ctx);
 
     /* Configure the mechanism for interrupt handling by
     *
@@ -174,7 +174,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             new_process->ctx.gpr[0] = 0;
 
             // Switch to the new process
-            switch_to_pid(pid);
+            switch_to_pid(ctx, pid);
             break;
         }
         case SYS_EXIT: {
