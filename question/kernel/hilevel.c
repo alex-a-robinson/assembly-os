@@ -2,11 +2,23 @@
 
 pcb_t pcb[MAX_PROCESSES], *current = NULL;
 
+// Stacks
+extern uint32_t tos_P1;
+extern uint32_t tos_P2;
+extern uint32_t tos_P3;
+uint32_t sps[] = {(uint32_t)(&tos_P1), (uint32_t)(&tos_P2), (uint32_t)(&tos_P3)};
+
+// Programs
+extern void main_console();
+extern void main_P3(); // TODO REMOVE
+extern void main_P4(); // TODO REMOVE
+extern void main_P5(); // TODO REMOVE
+
 void scheduler(ctx_t* ctx) {
     memcpy(&current->ctx, ctx, sizeof(ctx_t));
 
     // Loop through all processes until finds incomplete one
-    int p_index = current->pid - 1;
+    int p_index = current->pid-1;
     do {
         p_index = (p_index + 1) % MAX_PROCESSES;
         current = &pcb[p_index];
@@ -17,44 +29,27 @@ void scheduler(ctx_t* ctx) {
     return;
 }
 
-// Programs
-extern void main_console();
-extern void main_P3(); // TODO REMOVE
-
-// Stacks
-extern uint32_t tos_P1;
-extern uint32_t tos_P2;
-extern uint32_t tos_P3;
-
-
-void hilevel_handler_rst(ctx_t* ctx) {
-    /* Initialise PCBs representing processes stemming from execution of
-    * the two user programs.  Note in each case that
-    *
-    * - the CPSR value of 0x50 means the processor is switched into USR
+void reset_ctx(ctx_t* ctx, uint32_t pid) {//, void* sp) {
+    /* The CPSR value of 0x50 means the processor is switched into USR
     *   mode, with IRQ interrupts enabled, and
     * - the PC and SP values matche the entry point and top of stack.
     */
+    ctx->pc = (uint32_t)0;
+    ctx->cpsr = 0x50;
+    memset(&ctx->gpr, (uint32_t)0, sizeof(ctx->gpr));
+    ctx->sp = sps[pid-1];
+    ctx->lr = (uint32_t)0;
 
-    // TODO use MAX_PROCESSES and a loop
+    return;
+}
 
-    memset(&pcb[0], 0, sizeof(pcb_t));
-    pcb[0].pid = 1;
-    pcb[0].ctx.cpsr = 0x50;
-    pcb[0].ctx.pc = 0;
-    pcb[0].ctx.sp = (uint32_t)(&tos_P1);
-
-    memset(&pcb[1], 0, sizeof(pcb_t));
-    pcb[1].pid = 2;
-    pcb[1].ctx.cpsr = 0x50;
-    pcb[1].ctx.pc = 0;
-    pcb[1].ctx.sp = (uint32_t)(&tos_P2);
-
-    memset(&pcb[2], 0, sizeof(pcb_t));
-    pcb[2].pid = 3;
-    pcb[2].ctx.cpsr = 0x50;
-    pcb[2].ctx.pc = 0;
-    pcb[2].ctx.sp = (uint32_t)(&tos_P3);
+void hilevel_handler_rst(ctx_t* ctx) {
+    // Initialise PCBs representing processes
+    for (int i=0; i < MAX_PROCESSES; i++) {
+        memset(&pcb[i], 0, sizeof(pcb_t));
+        pcb[i].pid = i+1;
+        reset_ctx(&pcb[i].ctx, pcb[i].pid);
+    }
 
     /* Once the PCBs are initialised, we (arbitrarily) select one to be
     * restored (i.e., executed) when the function then returns.
@@ -63,6 +58,8 @@ void hilevel_handler_rst(ctx_t* ctx) {
     // Load console as first process
     //pcb[0].ctx.pc = (uint32_t)(&main_console);
     pcb[0].ctx.pc = (uint32_t)(&main_P3); // TODO rmeove
+    pcb[1].ctx.pc = (uint32_t)(&main_P4); // TODO rmeove
+    pcb[2].ctx.pc = (uint32_t)(&main_P5); // TODO rmeove
     current = &pcb[0];
     memcpy(ctx, &current->ctx, sizeof(ctx_t));
 
@@ -142,8 +139,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
                 // TODO unkown status code x
             }
 
-            // TODO cleanup the memory
-            current->ctx.pc = 0; // mark this process resourse as free
+            reset_ctx(ctx, current->pid);
             scheduler(ctx); // On exit use the scheduler to find the next program
             break;
         }
@@ -160,9 +156,15 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
                 // TODO Unknown signal x
             }
 
-            // TODO cleanup the memory
-            pcb[pid-1].ctx.pc = 0; // mark this process resourse as free
-            scheduler(ctx); // Schedule next
+            // If killing current proccess, reset ctx and run scheduler,
+            // otherwise update proccesses ctx so when scheduler next run
+            // it will be free
+            if (current->pid == pid) {
+                reset_ctx(ctx, pid);
+                scheduler(ctx);
+            } else {
+                reset_ctx(&pcb[pid-1].ctx, pid);
+            }
 
             ctx->gpr[0] = 0; // TODO result of exit meaningless?
             break;

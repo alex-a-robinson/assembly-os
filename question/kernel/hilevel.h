@@ -29,7 +29,7 @@
  * - a type that captures a process PCB.
  */
 
-typedef int pid_t;
+typedef int pid_t; // was int
 
 typedef struct {
   uint32_t cpsr, pc, gpr[ 13 ], sp, lr;
