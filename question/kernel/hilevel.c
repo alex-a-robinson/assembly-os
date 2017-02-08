@@ -120,50 +120,70 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
     case SYS_FORK : {
         // TODO
         pid_t pid = NULL;
-        ctx->gpr[ 0 ] = pid; // pid of forked process
+        /* Upon successful completion, fork() returns a value of 0 to the child process and returns the process ID of the child process to the parent process. Otherwise, a value of -1 is returned to the parent process, no child process is created, and the global variable [errno][1] is set to indi- cate the error. */
+        ctx->gpr[ 0 ] = 0; // TODO
         break;
     }
     case SYS_EXIT : {
-        int x = (int)(ctx->gpr[ 0 ]); // return code
+        int x = (int)(ctx->gpr[ 0 ]); // status code
+
+        if (x == EXIT_SUCCESS) {
+            // TODO Exit success
+        } else if (x == EXIT_FAILURE) {
+            // TODO Exit failure
+        } else {
+            // TODO unkown status code x
+        }
+
         current->complete = 1; // set process to complete
         scheduler( ctx ); // On exit use the scheduler to find the next program
         break;
     }
     case SYS_KILL : {
-        int   pid = ( int   )( ctx->gpr[ 0 ] );
-        int     x = (int)( ctx->gpr[ 1 ] );
+        pid_t pid = (pid_t)(ctx->gpr[0]);
+        int x = (int)(ctx->gpr[1]); // signal
         // TODO
-        ctx->gpr[ 0 ] = n; // result?
+
+        if (x == SIG_TERM) {
+            // TODO Terminate
+        } else if (x == SIG_QUIT) {
+            // TODO Quite
+        } else {
+            // TODO Unknown signal x
+        }
+
+        ctx->gpr[ 0 ] = 0; // TODO result of exit meaningless?
         break;
     }
     case SYS_WRITE : {
-      int   fd = ( int   )( ctx->gpr[ 0 ] );
-      char*  x = ( char* )( ctx->gpr[ 1 ] );
-      int    n = ( int   )( ctx->gpr[ 2 ] );
+      int   fd = ( int   )( ctx->gpr[ 0 ] ); // write to file descriptor
+      char*  x = ( char* )( ctx->gpr[ 1 ] ); // read from
+      int    n = ( int   )( ctx->gpr[ 2 ] ); // number of bytes
+
+      // TODO use differnt file handlers e.g. stderr
 
       for( int i = 0; i < n; i++ ) {
         PL011_putc( UART0, *x++, true );
       }
 
-      ctx->gpr[ 0 ] = n;
+      ctx->gpr[ 0 ] = n; // bytes written
       break;
+    }
+    case SYS_READ : {
+        int   fd = ( int   )( ctx->gpr[ 0 ] ); // read from file descriptor
+        char*  x = ( char* )( ctx->gpr[ 1 ] ); // write into
+        int    n = ( int   )( ctx->gpr[ 2 ] ); // number of bytes
+        // TODO use differnt file handlers
+        ctx->gpr[ 0 ] = n; // bytes read
+        break;
     }
     case SYS_YIELD : {
         // TODO
         break;
     }
     case SYS_EXEC : {
-        void* x = (void*)(ctx->gpr[0]); // function pointer to program to execute e.g. main_P3
+        void* x = (void*)(ctx->gpr[0]); // start executing program at address x e.g. &main_P3
         // TODO
-        ctx->gpr[ 0 ] = n; // pid?
-        break;
-    }
-    case SYS_READ : {
-        int   fd = ( int   )( ctx->gpr[ 0 ] );
-        char*  x = ( char* )( ctx->gpr[ 1 ] );
-        int    n = ( int   )( ctx->gpr[ 2 ] );
-        // TODO
-        ctx->gpr[ 0 ] = n;
         break;
     }
     default   : { // 0x?? => unknown/unsupported
