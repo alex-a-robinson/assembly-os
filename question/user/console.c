@@ -8,13 +8,13 @@
 
 void puts(char* x, int n) {
     for (int i = 0; i < n; i++) {
-        PL011_putc(UART1, x[i], true);
+        PL011_putc(UART1, x[i], true); // UART1?
     }
 }
 
 void gets(char* x, int n) {
     for (int i = 0; i < n; i++) {
-        x[i] = PL011_getc(UART1, true);
+        x[i] = PL011_getc(UART1, true); // UART1?
 
         if (x[i] == '\x0A') {
             x[i] = '\x00';

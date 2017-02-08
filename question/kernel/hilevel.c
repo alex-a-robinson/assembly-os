@@ -10,9 +10,6 @@ uint32_t sps[] = {(uint32_t)(&tos_P1), (uint32_t)(&tos_P2), (uint32_t)(&tos_P3)}
 
 // Programs
 extern void main_console();
-extern void main_P3(); // TODO REMOVE
-extern void main_P4(); // TODO REMOVE
-extern void main_P5(); // TODO REMOVE
 
 void scheduler(ctx_t* ctx) {
     memcpy(&current->ctx, ctx, sizeof(ctx_t));
@@ -56,10 +53,7 @@ void hilevel_handler_rst(ctx_t* ctx) {
     */
 
     // Load console as first process
-    pcb[1].ctx.pc = (uint32_t)(&main_console);
-    pcb[0].ctx.pc = (uint32_t)(&main_P3); // TODO rmeove
-    //pcb[1].ctx.pc = (uint32_t)(&main_P4); // TODO rmeove
-    //pcb[2].ctx.pc = (uint32_t)(&main_P5); // TODO rmeove
+    pcb[0].ctx.pc = (uint32_t)(&main_console);
     current = &pcb[0];
     memcpy(ctx, &current->ctx, sizeof(ctx_t));
 
@@ -87,13 +81,13 @@ void hilevel_handler_rst(ctx_t* ctx) {
     * - enabling IRQ interrupts.
     */
 
-    UART0->IMSC       |= 0x00000010; // enable UART    (Rx) interrupt
-    UART0->CR          = 0x00000301; // enable UART (Tx+Rx)
+    //UART0->IMSC       |= 0x00000010; // enable UART    (Rx) interrupt
+    //UART0->CR          = 0x00000301; // enable UART (Tx+Rx)
 
 
     GICC0->PMR = 0x000000F0; // unmask all            interrupts
 
-    GICD0->ISENABLER1 |= 0x00001000; // enable UART    (Rx) interrupt
+    //GICD0->ISENABLER1 |= 0x00001000; // enable UART    (Rx) interrupt
     GICD0->ISENABLER1 |= 0x00000010; // enable timer          interrupt
 
     GICC0->CTLR = 0x00000001; // enable GIC interface
@@ -114,18 +108,19 @@ void hilevel_handler_irq(ctx_t* ctx) {
     if (id == GIC_SOURCE_TIMER0) { // Timer
         scheduler(ctx);
         TIMER0->Timer1IntClr = 0x01;
-    } else if (id == GIC_SOURCE_UART0) { // Keyboard?
-        uint8_t x = PL011_getc( UART0, true );
-
-        // TODO Testing by putting it on the screen
-        PL011_putc( UART0, 'K',                      true );
-        PL011_putc( UART0, '<',                      true );
-        PL011_putc( UART0, itox( ( x >> 4 ) & 0xF ), true );
-        PL011_putc( UART0, itox( ( x >> 0 ) & 0xF ), true );
-        PL011_putc( UART0, '>',                      true );
-
-        UART0->ICR = 0x10;
     }
+    // } else if (id == GIC_SOURCE_UART0) { // Keyboard?
+    //     uint8_t x = PL011_getc( UART0, true );
+    //
+    //     // TODO Testing by putting it on the screen
+    //     PL011_putc( UART0, 'K',                      true );
+    //     PL011_putc( UART0, '<',                      true );
+    //     PL011_putc( UART0, itox( ( x >> 4 ) & 0xF ), true );
+    //     PL011_putc( UART0, itox( ( x >> 0 ) & 0xF ), true );
+    //     PL011_putc( UART0, '>',                      true );
+    //
+    //     UART0->ICR = 0x10;
+    // }
 
     // Step 5: write the interrupt identifier to signal we're done.
 
@@ -211,25 +206,25 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             ctx->gpr[0] = n; // bytes written
             break;
         }
-        case SYS_READ: {
-            int fd = (int)(ctx->gpr[0]); // read from file descriptor
-            char* x = (char*)(ctx->gpr[1]); // write into
-            int n = (int)(ctx->gpr[2]); // number of bytes
-            // TODO use differnt file handlers
-
-            // TODO test this works
-            for (int i = 0; i < n; i++) {
-                x[i] = PL011_getc(UART1, true);
-
-                if (x[i] == '\x0A') {
-                    x[i] = '\x00';
-                    break;
-                }
-            }
-
-            ctx->gpr[0] = n; // bytes read
-            break;
-        }
+        // case SYS_READ: {
+        //     int fd = (int)(ctx->gpr[0]); // read from file descriptor
+        //     char* x = (char*)(ctx->gpr[1]); // write into
+        //     int n = (int)(ctx->gpr[2]); // number of bytes
+        //     // TODO use differnt file handlers
+        //
+        //     // TODO test this works
+        //     for (int i = 0; i < n; i++) {
+        //         x[i] = PL011_getc(UART0, true);
+        //
+        //         if (x[i] == '\x0A') {
+        //             x[i] = '\x00';
+        //             break;
+        //         }
+        //     }
+        //
+        //     ctx->gpr[0] = n; // bytes read
+        //     break;
+        // }
         case SYS_YIELD: {
             scheduler(ctx);
             break;
