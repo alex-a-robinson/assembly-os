@@ -19,7 +19,17 @@ pid_t free_pid() {
         }
     }
 
-    return 0; // indicating an error
+    return -1; // indicating an error
+}
+
+// Set child processes ppid to 0
+void fix_orphaned_processes(pid_t ppid) {
+    for (int p_index=0; p_index < MAX_PROCESSES; p_index++) {
+        if (pcb[p_index].ppid == ppid) {
+            pcb[p_index].ppid = 0;
+        }
+    }
+    return;
 }
 
 // Implements scheduling algorithm, NOTE loops if all processes finished
@@ -149,6 +159,8 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
                 break;
             }
 
+            // NOTE: Could implement wait system call which waits for child process to complete
+
             // Copy the process
             pcb_t* new_process = &pcb[pid-1];
             memcpy(new_process, current, sizeof(pcb_t));
@@ -178,33 +190,57 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
 
             // Reset ctx (scheduler will update current with this) and run scheduler
             reset_ctx(ctx, current->pid);
+            fix_orphaned_processes(current->pid);
             scheduler(ctx);
             break;
         }
-        case SYS_KILL: {
+        case SYS_KILL: { // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
             pid_t pid = (pid_t)(ctx->gpr[0]);
             int x = (int)(ctx->gpr[1]); // signal
-            // TODO
 
-            if (x == SIG_TERM) {
-                // TODO Terminate
-            } else if (x == SIG_QUIT) {
+            /* - If pid is positive, then signal sig is sent
+            * to the process with the ID specified by pid.
+            * - If pid equals 0, then sig is sent to every
+            * process in the process group of the calling process.
+            * - If pid is less than -1, then sig is sent to every
+            * process in the process group whose ID is -pid.
+            * - If sig is 0, then no signal is sent, but error
+            * checking is still performed; this can be used
+            * to check for the existence of a process ID or
+            * process group ID.
+            */
+
+            if (x == SIG_TERM) { // Imediately terminate
+                /* Terminates a process immediately. However, this
+                * signal can be handled, ignored or caught in
+                * code. If the signal is not caught by a process,
+                * the process is killed. Also, this is used for
+                * graceful termination of a process
+                */
+                // If killing current process, reset ctx and run scheduler,
+                // otherwise update processes ctx so when scheduler next run
+                // it will be free
+                fix_orphaned_processes(current->pid);
+                if (current->pid == pid) {
+                    reset_ctx(ctx, pid);
+                    scheduler(ctx);
+                } else {
+                    reset_ctx(&pcb[pid-1].ctx, pid);
+                }
+                ctx->gpr[0] = 0; // Success
+            } else if (x == SIG_QUIT) { // Let process handle
+                /*  generates a core dump of the process and also
+                * cleans up resources held up by a process. Like
+                * SIGINT, this can also be sent from the terminal
+                * as input characters. It can be handled, ignored
+                * or caught in code.
+                */
                 // TODO Quit
+                ctx->gpr[0] = -1; // return error as unimplemented
             } else {
-                // TODO Unknown signal x
+                ctx->gpr[0] = -1; // return error unknown signal
             }
 
-            // If killing current process, reset ctx and run scheduler,
-            // otherwise update processes ctx so when scheduler next run
-            // it will be free
-            if (current->pid == pid) {
-                reset_ctx(ctx, pid);
-                scheduler(ctx);
-            } else {
-                reset_ctx(&pcb[pid-1].ctx, pid);
-            }
-
-            ctx->gpr[0] = 0; // TODO result of exit meaningless?
             break;
         }
         case SYS_WRITE: {
@@ -251,7 +287,6 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             reset_ctx(&current->ctx, current->pid);
             current->ctx.pc = (uint32_t)(x);
             reload_current_ctx(ctx);
-
             break;
         }
         default: { // 0x?? => unknown/unsupported

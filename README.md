@@ -5,6 +5,7 @@ Implement 1 sec timer based sceduling which uses a list of processes and removes
 ## Section 2
 ### Kill
 If killing current process, reset ctx and run scheduler in order to imediatly switch to the next process. If not current proccess then reset the processes ctx but continue execution of current process (rather then running the scheduler again).
+Also set all orphaned processes ppid to 0
 
 TODO:
 - What happens when program finsihes and is started again with fork?

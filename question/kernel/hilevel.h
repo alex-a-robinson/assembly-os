@@ -35,6 +35,9 @@ typedef struct {
   uint32_t cpsr, pc, gpr[ 13 ], sp, lr;
 } ctx_t;
 
+// TODO add pending signals
+// TODO add child exit code
+// TODO process groups? pgid
 typedef struct {
   pid_t pid;
   pid_t ppid;
