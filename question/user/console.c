@@ -1,10 +1,10 @@
 #include "console.h"
 
 /* The following functions are special-case versions of a) writing,
- * and b) reading a string from the UART (the latter case returning
- * once a carriage return character has been read, or an overall
- * limit reached).
- */
+* and b) reading a string from the UART (the latter case returning
+* once a carriage return character has been read, or an overall
+* limit reached).
+*/
 
 void puts(char* x, int n) {
     for (int i = 0; i < n; i++) {
@@ -24,10 +24,10 @@ void gets(char* x, int n) {
 }
 
 /* Since we lack a *real* loader (as a result of lacking a storage
- * medium to store program images), the following approximates one:
- * given a program name, from the set of programs statically linked
- * into the kernel image, it returns a pointer to the entry point.
- */
+* medium to store program images), the following approximates one:
+* given a program name, from the set of programs statically linked
+* into the kernel image, it returns a pointer to the entry point.
+*/
 
 extern void main_P3();
 extern void main_P4();
@@ -46,12 +46,12 @@ void* load(char* x) {
 }
 
 /* The behaviour of the console process can be summarised as an
- * (infinite) loop over three main steps, namely
- *
- * 1. write a command prompt then read a command,
- * 2. split the command into space-separated tokens using strtok,
- * 3. execute whatever steps the command dictates.
- */
+* (infinite) loop over three main steps, namely
+*
+* 1. write a command prompt then read a command,
+* 2. split the command into space-separated tokens using strtok,
+* 3. execute whatever steps the command dictates.
+*/
 
 void main_console() {
     char* p, x[1024];

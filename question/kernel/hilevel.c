@@ -29,12 +29,12 @@ extern uint32_t tos_P3;
 
 void hilevel_handler_rst(ctx_t* ctx) {
     /* Initialise PCBs representing processes stemming from execution of
-     * the two user programs.  Note in each case that
-     *
-     * - the CPSR value of 0x50 means the processor is switched into USR
-     *   mode, with IRQ interrupts enabled, and
-     * - the PC and SP values matche the entry point and top of stack.
-     */
+    * the two user programs.  Note in each case that
+    *
+    * - the CPSR value of 0x50 means the processor is switched into USR
+    *   mode, with IRQ interrupts enabled, and
+    * - the PC and SP values matche the entry point and top of stack.
+    */
 
     // TODO use MAX_PROCESSES and a loop
 
@@ -57,8 +57,8 @@ void hilevel_handler_rst(ctx_t* ctx) {
     pcb[2].ctx.sp = (uint32_t)(&tos_P3);
 
     /* Once the PCBs are initialised, we (arbitrarily) select one to be
-     * restored (i.e., executed) when the function then returns.
-     */
+    * restored (i.e., executed) when the function then returns.
+    */
 
     // Load console as first process
     //pcb[0].ctx.pc = (uint32_t)(&main_console);
@@ -67,13 +67,13 @@ void hilevel_handler_rst(ctx_t* ctx) {
     memcpy(ctx, &current->ctx, sizeof(ctx_t));
 
     /* Configure the mechanism for interrupt handling by
-     *
-     * - configuring timer st. it raises a (periodic) interrupt for each
-     *   timer tick,
-     * - configuring GIC st. the selected interrupts are forwarded to the
-     *   processor via the IRQ interrupt signal, then
-     * - enabling IRQ interrupts.
-     */
+    *
+    * - configuring timer st. it raises a (periodic) interrupt for each
+    *   timer tick,
+    * - configuring GIC st. the selected interrupts are forwarded to the
+    *   processor via the IRQ interrupt signal, then
+    * - enabling IRQ interrupts.
+    */
 
     TIMER0->Timer1Load = 0x00100000; // select period = 2^20 ticks ~= 1 sec
     TIMER0->Timer1Ctrl = 0x00000002; // select 32-bit   timer
@@ -112,22 +112,22 @@ void hilevel_handler_irq(ctx_t* ctx) {
 
 void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
     /* Based on the identified encoded as an immediate operand in the
-     * instruction,
-     *
-     * - read  the arguments from preserved usr mode registers,
-     * - perform whatever is appropriate for this system call,
-     * - write any return value back to preserved usr mode registers.
-     */
+    * instruction,
+    *
+    * - read  the arguments from preserved usr mode registers,
+    * - perform whatever is appropriate for this system call,
+    * - write any return value back to preserved usr mode registers.
+    */
 
     switch (id) {
         case SYS_FORK: {
             // TODO
             /* Upon successful completion, fork() returns a value of 0
-             * to the child process and returns the process ID of the
-             * child process to the parent process. Otherwise, a value
-             * of -1 is returned to the parent process, no child process
-             * is created, and the global variable [errno][1] is set to
-             * indicate the error. */
+            * to the child process and returns the process ID of the
+            * child process to the parent process. Otherwise, a value
+            * of -1 is returned to the parent process, no child process
+            * is created, and the global variable [errno][1] is set to
+            * indicate the error. */
             ctx->gpr[0] = 0; // TODO See above note
             break;
         }
