@@ -32,6 +32,18 @@ void fix_orphaned_processes(pid_t ppid) {
     return;
 }
 
+// Load the current ctx into the ctx
+void load_ctx(ctx_t* ctx) {
+    memcpy(ctx, &current->ctx, sizeof(ctx_t));
+    return;
+}
+
+// Save the ctx into the current
+void save_ctx(ctx_t* ctx) {
+    memcpy(&current->ctx, ctx, sizeof(ctx_t));
+    return;
+}
+
 // Implements scheduling algorithm, NOTE loops if all processes finished
 pid_t next_pid() {
     int p_index = current->pid-1;
@@ -48,15 +60,9 @@ void switch_to_pid(ctx_t* ctx, pid_t pid) {
     if (current->pid == pid) {
         return;
     }
-    memcpy(&current->ctx, ctx, sizeof(ctx_t)); // save current state
+    save_ctx(ctx);
     current = &pcb[pid-1];
-    memcpy(ctx, &current->ctx, sizeof(ctx_t)); // update new state
-    return;
-}
-
-// Load the current ctx into the ctx
-void reload_current_ctx(ctx_t* ctx) {
-    memcpy(ctx, &current->ctx, sizeof(ctx_t));
+    load_ctx(ctx);
     return;
 }
 
@@ -97,7 +103,7 @@ void hilevel_handler_rst(ctx_t* ctx) {
     // Load console as first process
     pcb[0].ctx.pc = (uint32_t)(&main_console);
     current = &pcb[0];
-    reload_current_ctx(ctx);
+    load_ctx(ctx);
 
     /* Configure the mechanism for interrupt handling by
     *
@@ -152,7 +158,7 @@ void sys_fork(ctx_t* ctx) {
 
     // If no pid, return an error
     if (pid == -1) {
-        ctx->gpr[0] = -1;
+        ctx->gpr[0] = (uint32_t)-1;
         return;
     }
 
@@ -160,6 +166,7 @@ void sys_fork(ctx_t* ctx) {
 
     // Copy the process
     pcb_t* new_process = &pcb[pid-1];
+    save_ctx(ctx); // Save the ctx into current
     memcpy(new_process, current, sizeof(pcb_t));
 
     // Update its pid and ppid
@@ -167,8 +174,8 @@ void sys_fork(ctx_t* ctx) {
     new_process->ppid = current->pid;
 
     // Return child pid to parent and 0 to child
-    current->ctx.gpr[0] = pid;
-    new_process->ctx.gpr[0] = 0;
+    ctx->gpr[0] = (uint32_t)pid;
+    new_process->ctx.gpr[0] = (uint32_t)0;
 
     // Switch to the new process
     switch_to_pid(ctx, pid);
@@ -192,7 +199,7 @@ void sys_exit(ctx_t* ctx, int x) {
     return;
 }
 
-int sys_kill(ctx_t* ctx, pid_t pid, int sig) {
+int sys_kill(ctx_t* ctx, pid_t pid, uint32_t sig) {
     /* - If pid is positive, then signal sig is sent
     * to the process with the ID specified by pid.
     * - If pid equals 0, then sig is sent to every
@@ -276,7 +283,7 @@ void sys_exec(ctx_t* ctx, void* x) {
     // Reset current ctx, update pc to new program, and reload the ctx
     reset_ctx(&current->ctx, current->pid);
     current->ctx.pc = (uint32_t)(x);
-    reload_current_ctx(ctx);
+    load_ctx(ctx);
     return;
 }
 
@@ -301,9 +308,9 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         }
         case SYS_KILL: {
             pid_t pid = (pid_t)(ctx->gpr[0]);
-            int x = (int)(ctx->gpr[1]); // signal
+            uint32_t x = (uint32_t)(ctx->gpr[1]); // signal
             int status = sys_kill(ctx, pid, x);
-            ctx->gpr[0] = status;
+            ctx->gpr[0] = (uint32_t)status;
             break;
         }
         case SYS_WRITE: {
@@ -311,7 +318,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             char* x = (char*)(ctx->gpr[1]); // read from
             int n = (int)(ctx->gpr[2]); // number of bytes
             int bytes_written = sys_write(fd, x, n);
-            ctx->gpr[0] = bytes_written;
+            ctx->gpr[0] = (uint32_t)bytes_written;
             break;
         }
         case SYS_READ: {
@@ -319,7 +326,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             char* x = (char*)(ctx->gpr[1]); // write into
             int n = (int)(ctx->gpr[2]); // number of bytes
             int bytes_read = sys_read(fd, x, n);
-            ctx->gpr[0] = bytes_read;
+            ctx->gpr[0] = (uint32_t)bytes_read;
             break;
         }
         case SYS_YIELD: {
