@@ -143,6 +143,143 @@ void hilevel_handler_irq(ctx_t* ctx) {
     return;
 }
 
+// TODO split out all the handlers into functions
+
+void sys_fork(ctx_t* ctx) {
+    // https://linux.die.net/man/2/fork
+    // NOTE what to do about file descriptors?
+    pid_t pid = free_pid();
+
+    // If no pid, return an error
+    if (pid == -1) {
+        ctx->gpr[0] = -1;
+        return;
+    }
+
+    // NOTE: Could implement wait system call which waits for child process to complete
+
+    // Copy the process
+    pcb_t* new_process = &pcb[pid-1];
+    memcpy(new_process, current, sizeof(pcb_t));
+
+    // Update its pid and ppid
+    new_process->pid = pid;
+    new_process->ppid = current->pid;
+
+    // Return child pid to parent and 0 to child
+    current->ctx.gpr[0] = pid;
+    new_process->ctx.gpr[0] = 0;
+
+    // Switch to the new process
+    switch_to_pid(ctx, pid);
+
+    return;
+}
+
+void sys_exit(ctx_t* ctx, int x) {
+    if (x == EXIT_SUCCESS) {
+        // TODO Exit success
+    } else if (x == EXIT_FAILURE) {
+        // TODO Exit failure
+    } else {
+        // TODO unkown status code x
+    }
+
+    // Reset ctx (scheduler will update current with this) and run scheduler
+    reset_ctx(ctx, current->pid);
+    fix_orphaned_processes(current->pid);
+    scheduler(ctx);
+    return;
+}
+
+int sys_kill(ctx_t* ctx, pid_t pid, int sig) {
+    /* - If pid is positive, then signal sig is sent
+    * to the process with the ID specified by pid.
+    * - If pid equals 0, then sig is sent to every
+    * process in the process group of the calling process.
+    * - If pid is less than -1, then sig is sent to every
+    * process in the process group whose ID is -pid.
+    * - If sig is 0, then no signal is sent, but error
+    * checking is still performed; this can be used
+    * to check for the existence of a process ID or
+    * process group ID.
+    */
+
+    switch (sig) {
+        case SIG_TERM: {
+            /* Terminates a process immediately. However, this
+            * signal can be handled, ignored or caught in
+            * code. If the signal is not caught by a process,
+            * the process is killed. Also, this is used for
+            * graceful termination of a process
+            */
+            // If killing current process, reset ctx and run scheduler,
+            // otherwise update processes ctx so when scheduler next run
+            // it will be free
+            fix_orphaned_processes(current->pid);
+            if (current->pid == pid) {
+                reset_ctx(ctx, pid);
+                scheduler(ctx);
+            } else {
+                reset_ctx(&pcb[pid-1].ctx, pid);
+            }
+            return 0; // Success
+        }
+        case SIG_QUIT: {
+            /*  generates a core dump of the process and also
+            * cleans up resources held up by a process. Like
+            * SIGINT, this can also be sent from the terminal
+            * as input characters. It can be handled, ignored
+            * or caught in code.
+            */
+            // TODO Quit
+            return -1; // return error as unimplemented
+        }
+        default: {
+            return -1; // return error unknown signal
+        }
+    }
+}
+
+int sys_write(int fd, char* x, int n) {
+    // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
+    // TODO use differnt file handlers e.g. stderr
+    for (int i = 0; i < n; i++) {
+        PL011_putc(UART0, *x++, true);
+    }
+    return n;
+}
+
+int sys_read(int fd, char* x, int n) {
+    // TODO use differnt file handlers
+    return n; // TODO
+
+    // TODO test this works
+    for (int i = 0; i < n; i++) {
+        x[i] = PL011_getc(UART0, true);
+
+        if (x[i] == '\x0A') {
+            x[i] = '\x00';
+            break;
+        }
+    }
+    return n;
+}
+
+void sys_yield(ctx_t* ctx) {
+    scheduler(ctx);
+    return;
+}
+
+void sys_exec(ctx_t* ctx, void* x) {
+    // https://linux.die.net/man/3/exec
+    // Reset current ctx, update pc to new program, and reload the ctx
+    reset_ctx(&current->ctx, current->pid);
+    current->ctx.pc = (uint32_t)(x);
+    reload_current_ctx(ctx);
+    return;
+}
+
 void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
     /* Based on the identified encoded as an immediate operand in the
     * instruction,
@@ -153,144 +290,45 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
     */
 
     switch (id) {
-        case SYS_FORK: { // https://linux.die.net/man/2/fork
-            // NOTE what to do about file descriptors?
-            pid_t pid = free_pid();
-
-            // If no pid, return an error
-            if (pid == 0) {
-                current->ctx.gpr[0] = -1;
-                break;
-            }
-
-            // NOTE: Could implement wait system call which waits for child process to complete
-
-            // Copy the process
-            pcb_t* new_process = &pcb[pid-1];
-            memcpy(new_process, current, sizeof(pcb_t));
-
-            // Update its pid and ppid
-            new_process->pid = pid;
-            new_process->ppid = current->pid;
-
-            // Return child pid to parent and 0 to child
-            current->ctx.gpr[0] = pid;
-            new_process->ctx.gpr[0] = 0;
-
-            // Switch to the new process
-            switch_to_pid(ctx, pid);
+        case SYS_FORK: {
+            sys_fork(ctx);
             break;
         }
         case SYS_EXIT: {
             int x = (int)(ctx->gpr[0]); // status code
-
-            if (x == EXIT_SUCCESS) {
-                // TODO Exit success
-            } else if (x == EXIT_FAILURE) {
-                // TODO Exit failure
-            } else {
-                // TODO unkown status code x
-            }
-
-            // Reset ctx (scheduler will update current with this) and run scheduler
-            reset_ctx(ctx, current->pid);
-            fix_orphaned_processes(current->pid);
-            scheduler(ctx);
+            sys_exit(ctx, x);
             break;
         }
-        case SYS_KILL: { // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
+        case SYS_KILL: {
             pid_t pid = (pid_t)(ctx->gpr[0]);
             int x = (int)(ctx->gpr[1]); // signal
-
-            /* - If pid is positive, then signal sig is sent
-            * to the process with the ID specified by pid.
-            * - If pid equals 0, then sig is sent to every
-            * process in the process group of the calling process.
-            * - If pid is less than -1, then sig is sent to every
-            * process in the process group whose ID is -pid.
-            * - If sig is 0, then no signal is sent, but error
-            * checking is still performed; this can be used
-            * to check for the existence of a process ID or
-            * process group ID.
-            */
-
-            if (x == SIG_TERM) { // Imediately terminate
-                /* Terminates a process immediately. However, this
-                * signal can be handled, ignored or caught in
-                * code. If the signal is not caught by a process,
-                * the process is killed. Also, this is used for
-                * graceful termination of a process
-                */
-                // If killing current process, reset ctx and run scheduler,
-                // otherwise update processes ctx so when scheduler next run
-                // it will be free
-                fix_orphaned_processes(current->pid);
-                if (current->pid == pid) {
-                    reset_ctx(ctx, pid);
-                    scheduler(ctx);
-                } else {
-                    reset_ctx(&pcb[pid-1].ctx, pid);
-                }
-                ctx->gpr[0] = 0; // Success
-            } else if (x == SIG_QUIT) { // Let process handle
-                /*  generates a core dump of the process and also
-                * cleans up resources held up by a process. Like
-                * SIGINT, this can also be sent from the terminal
-                * as input characters. It can be handled, ignored
-                * or caught in code.
-                */
-                // TODO Quit
-                ctx->gpr[0] = -1; // return error as unimplemented
-            } else {
-                ctx->gpr[0] = -1; // return error unknown signal
-            }
-
+            int status = sys_kill(ctx, pid, x);
+            ctx->gpr[0] = status;
             break;
         }
         case SYS_WRITE: {
             int fd = (int)(ctx->gpr[0]); // write to file descriptor
             char* x = (char*)(ctx->gpr[1]); // read from
             int n = (int)(ctx->gpr[2]); // number of bytes
-
-            // TODO use differnt file handlers e.g. stderr
-
-            for (int i = 0; i < n; i++) {
-                PL011_putc(UART0, *x++, true);
-            }
-
-            ctx->gpr[0] = n; // bytes written
+            int bytes_written = sys_write(fd, x, n);
+            ctx->gpr[0] = bytes_written;
             break;
         }
-        // case SYS_READ: {
-        //     int fd = (int)(ctx->gpr[0]); // read from file descriptor
-        //     char* x = (char*)(ctx->gpr[1]); // write into
-        //     int n = (int)(ctx->gpr[2]); // number of bytes
-        //     // TODO use differnt file handlers
-        //
-        //     // TODO test this works
-        //     for (int i = 0; i < n; i++) {
-        //         x[i] = PL011_getc(UART0, true);
-        //
-        //         if (x[i] == '\x0A') {
-        //             x[i] = '\x00';
-        //             break;
-        //         }
-        //     }
-        //
-        //     ctx->gpr[0] = n; // bytes read
-        //     break;
-        // }
+        case SYS_READ: {
+            int fd = (int)(ctx->gpr[0]); // read from file descriptor
+            char* x = (char*)(ctx->gpr[1]); // write into
+            int n = (int)(ctx->gpr[2]); // number of bytes
+            int bytes_read = sys_read(fd, x, n);
+            ctx->gpr[0] = bytes_read;
+            break;
+        }
         case SYS_YIELD: {
-            scheduler(ctx);
+            sys_yield(ctx);
             break;
         }
-        case SYS_EXEC: { // https://linux.die.net/man/3/exec
+        case SYS_EXEC: {
             void* x = (void*)(ctx->gpr[0]); // start executing program at address x e.g. &main_P3
-
-            // Reset current ctx, update pc to new program, and reload the ctx
-            reset_ctx(&current->ctx, current->pid);
-            current->ctx.pc = (uint32_t)(x);
-            reload_current_ctx(ctx);
+            sys_exec(ctx, x);
             break;
         }
         default: { // 0x?? => unknown/unsupported
