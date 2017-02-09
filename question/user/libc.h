@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 // Define a type that that captures a Process IDentifier (PID).
 
@@ -13,7 +14,7 @@ typedef int pid_t;
  *
  * 1. system call identifiers (i.e., the constant used by a system call
  *    to specify which action the kernel should take),
- * 2. signal identifiers (as used by the kill system call), 
+ * 2. signal identifiers (as used by the kill system call),
  * 3. status codes for exit,
  * 4. standard file descriptors (e.g., for read and write system calls),
  * 5. platform-specific constants, which may need calibration (wrt. the
@@ -51,6 +52,8 @@ extern void yield();
 
 // write n bytes from x to   the file descriptor fd; return bytes written
 extern int write( int fd, const void* x, size_t n );
+void err(char* msg);
+
 // read  n bytes into x from the file descriptor fd; return bytes read
 extern int  read( int fd,       void* x, size_t n );
 

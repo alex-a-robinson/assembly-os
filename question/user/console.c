@@ -1,28 +1,5 @@
 #include "console.h"
 
-/* The following functions are special-case versions of a) writing,
-* and b) reading a string from the UART (the latter case returning
-* once a carriage return character has been read, or an overall
-* limit reached).
-*/
-
-void puts(char* x, int n) {
-    for (int i = 0; i < n; i++) {
-        PL011_putc(UART1, x[i], true); // UART1?
-    }
-}
-
-void gets(char* x, int n) {
-    for (int i = 0; i < n; i++) {
-        x[i] = PL011_getc(UART1, true); // UART1?
-
-        if (x[i] == '\x0A') {
-            x[i] = '\x00';
-            break;
-        }
-    }
-}
-
 /* Since we lack a *real* loader (as a result of lacking a storage
 * medium to store program images), the following approximates one:
 * given a program name, from the set of programs statically linked
@@ -57,8 +34,10 @@ void main_console() {
     char* p, x[1024];
 
     while (1) {
-        puts("shell$ ", 7);
-        gets(x, 1024);
+        //write("shell$ ", 7);
+        write(STDERR_FILENO, "shell$ ", 7);
+        //gets(x, 1024);
+        read(STDIN_FILENO, x, 1024);
         p = strtok(x, " ");
 
         if (0 == strcmp(p, "fork")) {
@@ -74,7 +53,7 @@ void main_console() {
 
             kill(pid, s);
         } else {
-            puts("unknown command\n", 16);
+            err("unknown command\n");
         }
     }
 

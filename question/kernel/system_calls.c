@@ -21,11 +21,11 @@ int sys_write(int fd, char* x, int n) {
 
 int sys_read(int fd, char* x, int n) {
     // TODO use differnt file handlers
-    return n; // TODO
+    PL011_t* device = UART1; // defult to error
 
     // TODO test this works
     for (int i = 0; i < n; i++) {
-        x[i] = PL011_getc(UART0, true);
+        x[i] = PL011_getc(device, true);
 
         if (x[i] == '\x0A') {
             x[i] = '\x00';

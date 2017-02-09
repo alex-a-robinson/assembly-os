@@ -69,6 +69,10 @@ int write( int fd, const void* x, size_t n ) {
     return r;
 }
 
+void err(char* msg) {
+    write(STDERR_FILENO, msg, strlen(msg));
+}
+
 int  read( int fd,       void* x, size_t n ) {
     int r;
 
