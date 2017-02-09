@@ -11,25 +11,9 @@ uint32_t sps[] = {(uint32_t)(&tos_P1), (uint32_t)(&tos_P2), (uint32_t)(&tos_P3)}
 // Programs
 extern void main_console();
 
-// Find a pid which is free, 0 for error
-pid_t free_pid() {
-    for (int p_index=0; p_index < MAX_PROCESSES; p_index++) {
-        if (pcb[p_index].ctx.pc == 0) {
-            return p_index + 1; // pid
-        }
-    }
-
-    return -1; // indicating an error
-}
-
-// Set child processes ppid to 0
-void fix_orphaned_processes(pid_t ppid) {
-    for (int p_index=0; p_index < MAX_PROCESSES; p_index++) {
-        if (pcb[p_index].ppid == ppid) {
-            pcb[p_index].ppid = 0;
-        }
-    }
-    return;
+// Return process
+pcb_t* process(pid_t pid) {
+    return &pcb[pid-1];
 }
 
 // Load the current ctx into the ctx
@@ -44,14 +28,43 @@ void save_ctx(ctx_t* ctx) {
     return;
 }
 
-// Implements scheduling algorithm, NOTE loops if all processes finished
-pid_t next_pid() {
-    int p_index = current->pid-1;
-    do {
-        p_index = (p_index + 1) % MAX_PROCESSES;
-    } while (pcb[p_index].ctx.pc == 0); // Infinite if all processes finsiehd
+// Returns 1 if process is active else 0
+int active_process(pid_t pid) {
+    return (process(pid)->ctx.pc != 0);
+}
 
-    return p_index+1;
+// Find a pid which is free
+pid_t free_pid() {
+    for (pid_t pid=1; pid <= MAX_PROCESSES; pid++) {
+        if (!active_process(pid)) {
+            return pid;
+        }
+    }
+
+    return -1; // indicating an error
+}
+
+// Set child processes ppid to 0
+void fix_orphaned_processes(pid_t ppid) {
+    for (pid_t pid=1; pid <= MAX_PROCESSES; pid++) {
+        if (process(pid)->ppid == ppid) {
+            process(pid)->ppid = 0;
+        }
+    }
+    return;
+}
+
+// Implements scheduling algorithm
+pid_t next_pid() {
+    pid_t pid = current->pid;
+    for (int i=0; i < MAX_PROCESSES; i++) {
+        pid = (pid % MAX_PROCESSES) + 1;
+        if (active_process(pid)) {
+            return pid;
+        }
+    }
+
+    return -1;
 }
 
 // Switch current process
@@ -61,7 +74,7 @@ void switch_to_pid(ctx_t* ctx, pid_t pid) {
         return;
     }
     save_ctx(ctx);
-    current = &pcb[pid-1];
+    current = process(pid);
     load_ctx(ctx);
     return;
 }
@@ -69,11 +82,15 @@ void switch_to_pid(ctx_t* ctx, pid_t pid) {
 // Select the next process and switch to it
 void scheduler(ctx_t* ctx) {
     pid_t pid = next_pid();
+    if (pid == -1) {
+        // TODO scope error("No processes to schedule");
+        return;
+    }
     switch_to_pid(ctx, pid);
     return;
 }
 
-void reset_ctx(ctx_t* ctx, pid_t pid) {//, void* sp) {
+void reset_ctx(ctx_t* ctx, pid_t pid) {
     /* The CPSR value of 0x50 means the processor is switched into USR
     *   mode, with IRQ interrupts enabled, and
     * - the PC and SP values matche the entry point and top of stack.
@@ -89,11 +106,11 @@ void reset_ctx(ctx_t* ctx, pid_t pid) {//, void* sp) {
 
 void hilevel_handler_rst(ctx_t* ctx) {
     // Initialise PCBs representing processes
-    for (int i=0; i < MAX_PROCESSES; i++) {
-        memset(&pcb[i], 0, sizeof(pcb_t));
-        pcb[i].pid = i+1;
-        pcb[i].ppid = 0; // Default to 0 ppid
-        reset_ctx(&pcb[i].ctx, pcb[i].pid);
+    for (pid_t pid=1; pid <= MAX_PROCESSES; pid++) {
+        memset(process(pid), 0, sizeof(pcb_t));
+        process(pid)->pid = pid;
+        process(pid)->ppid = 0; // Default to 0 ppid
+        reset_ctx(&process(pid)->ctx, pid);
     }
 
     /* Once the PCBs are initialised, we (arbitrarily) select one to be
@@ -101,8 +118,8 @@ void hilevel_handler_rst(ctx_t* ctx) {
     */
 
     // Load console as first process
-    pcb[0].ctx.pc = (uint32_t)(&main_console);
-    current = &pcb[0];
+    process(1)->ctx.pc = (uint32_t)(&main_console);
+    current = process(1);
     load_ctx(ctx);
 
     /* Configure the mechanism for interrupt handling by
@@ -132,24 +149,57 @@ void hilevel_handler_rst(ctx_t* ctx) {
 
 void hilevel_handler_irq(ctx_t* ctx) {
     // Step 2: read  the interrupt identifier so we know the source.
-
     uint32_t id = GICC0->IAR;
 
     // Step 4: handle the interrupt, then clear (or reset) the source.
-
     if (id == GIC_SOURCE_TIMER0) { // Timer
         scheduler(ctx);
         TIMER0->Timer1IntClr = 0x01;
     }
 
     // Step 5: write the interrupt identifier to signal we're done.
-
     GICC0->EOIR = id;
 
     return;
 }
 
-// TODO split out all the handlers into functions
+int sys_write(int fd, char* x, int n) {
+    // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
+
+    // Convert file handler to QEMU devices
+    PL011_t* device = UART1; // defult to error
+    if (fd == STDOUT_FILENO) {
+        device = UART0;
+    } else if (fd == STDERR_FILENO) {
+        device = UART1;
+    }
+
+    for (int i = 0; i < n; i++) {
+        PL011_putc(device, *x++, true);
+    }
+    return n;
+}
+
+int sys_read(int fd, char* x, int n) {
+    // TODO use differnt file handlers
+    return n; // TODO
+
+    // TODO test this works
+    for (int i = 0; i < n; i++) {
+        x[i] = PL011_getc(UART0, true);
+
+        if (x[i] == '\x0A') {
+            x[i] = '\x00';
+            break;
+        }
+    }
+    return n;
+}
+
+void error(char* msg) {
+    strcat(msg, "\n");
+    sys_write(STDERR_FILENO, msg, strlen(msg));
+}
 
 void sys_fork(ctx_t* ctx) {
     // https://linux.die.net/man/2/fork
@@ -158,6 +208,7 @@ void sys_fork(ctx_t* ctx) {
 
     // If no pid, return an error
     if (pid == -1) {
+        error("No free processes");
         ctx->gpr[0] = (uint32_t)-1;
         return;
     }
@@ -165,7 +216,7 @@ void sys_fork(ctx_t* ctx) {
     // NOTE: Could implement wait system call which waits for child process to complete
 
     // Copy the process
-    pcb_t* new_process = &pcb[pid-1];
+    pcb_t* new_process = process(pid);
     save_ctx(ctx); // Save the ctx into current
     memcpy(new_process, current, sizeof(pcb_t));
 
@@ -212,6 +263,11 @@ int sys_kill(ctx_t* ctx, pid_t pid, uint32_t sig) {
     * process group ID.
     */
 
+    if (!active_process(pid)) {
+        error("No process exists");
+        return -1;
+    }
+
     switch (sig) {
         case SIG_TERM: {
             /* Terminates a process immediately. However, this
@@ -228,7 +284,7 @@ int sys_kill(ctx_t* ctx, pid_t pid, uint32_t sig) {
                 reset_ctx(ctx, pid);
                 scheduler(ctx);
             } else {
-                reset_ctx(&pcb[pid-1].ctx, pid);
+                reset_ctx(&process(pid)->ctx, pid);
             }
             return 0; // Success
         }
@@ -240,37 +296,14 @@ int sys_kill(ctx_t* ctx, pid_t pid, uint32_t sig) {
             * or caught in code.
             */
             // TODO Quit
+            error("Unimplemented signal");
             return -1; // return error as unimplemented
         }
         default: {
+            error("Unknown signal");
             return -1; // return error unknown signal
         }
     }
-}
-
-int sys_write(int fd, char* x, int n) {
-    // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
-    // TODO use differnt file handlers e.g. stderr
-    for (int i = 0; i < n; i++) {
-        PL011_putc(UART0, *x++, true);
-    }
-    return n;
-}
-
-int sys_read(int fd, char* x, int n) {
-    // TODO use differnt file handlers
-    return n; // TODO
-
-    // TODO test this works
-    for (int i = 0; i < n; i++) {
-        x[i] = PL011_getc(UART0, true);
-
-        if (x[i] == '\x0A') {
-            x[i] = '\x00';
-            break;
-        }
-    }
-    return n;
 }
 
 void sys_yield(ctx_t* ctx) {
@@ -281,6 +314,11 @@ void sys_yield(ctx_t* ctx) {
 void sys_exec(ctx_t* ctx, void* x) {
     // https://linux.die.net/man/3/exec
     // Reset current ctx, update pc to new program, and reload the ctx
+    if (x == NULL) {
+        error("Invalid program");
+        return;
+    }
+
     reset_ctx(&current->ctx, current->pid);
     current->ctx.pc = (uint32_t)(x);
     load_ctx(ctx);
@@ -339,6 +377,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             break;
         }
         default: { // 0x?? => unknown/unsupported
+            error("unknown/unsupported system call");
             break;
         }
     }
