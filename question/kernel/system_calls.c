@@ -35,8 +35,6 @@ int sys_read(int fd, char* x, int n) {
     return n;
 }
 
-
-
 void sys_fork(ctx_t* ctx) {
     // https://linux.die.net/man/2/fork
     // NOTE what to do about file descriptors?
