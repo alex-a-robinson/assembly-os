@@ -44,7 +44,7 @@ void sys_fork(ctx_t* ctx) {
 
     // If no pid, return an error
     if (pid == -1) {
-        error("No free processes");
+        error("No free processes\n");
         ctx->gpr[0] = (uint32_t)-1;
         return;
     }
@@ -100,7 +100,7 @@ int sys_kill(ctx_t* ctx, pid_t pid, uint32_t sig) {
     */
 
     if (!active_process(pid)) {
-        error("No process exists");
+        error("No process exists\n");
         return -1;
     }
 
@@ -132,11 +132,11 @@ int sys_kill(ctx_t* ctx, pid_t pid, uint32_t sig) {
             * or caught in code.
             */
             // TODO Quit
-            error("Unimplemented signal");
+            error("Unimplemented signal\n");
             return -1; // return error as unimplemented
         }
         default: {
-            error("Unknown signal");
+            error("Unknown signal\n");
             return -1; // return error unknown signal
         }
     }
@@ -151,7 +151,8 @@ void sys_exec(ctx_t* ctx, void* x) {
     // https://linux.die.net/man/3/exec
     // Reset current ctx, update pc to new program, and reload the ctx
     if (x == NULL) {
-        error("Invalid program");
+        error("Invalid program\n");
+        sys_exit(ctx, EXIT_FAILURE); // exit forked process
         return;
     }
 
