@@ -27,8 +27,11 @@ void philosopher() {//int id) {
 }
 
 void main_dp() {
+    // Init array (all to 1 except 1)
+    int forks[PHILOSOPHERS];
+    for (int i=0; i<PHILOSOPHERS-1; i++) { forks[i] = 1; }
+
     // Share forks memeory
-    int forks[PHILOSOPHERS] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0};
     share(forks);
 
     // Spawn philosphers
