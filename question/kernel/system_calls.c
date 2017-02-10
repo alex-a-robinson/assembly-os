@@ -141,6 +141,7 @@ int sys_kill(ctx_t* ctx, pid_t pid, uint32_t sig) {
 }
 
 void sys_yield(ctx_t* ctx) {
+    current->priority.time_left = 0;
     scheduler(ctx);
     return;
 }
