@@ -100,6 +100,16 @@ int fork() {
     return r;
 }
 
+void ps(int pid) {
+    asm volatile( "mov r0, %1 \n" // assign r0 =  x
+    "svc %0     \n" // make system call SYS_EXIT
+    :
+    : "I" (SYS_PS), "r" (pid)
+    : "r0" );
+
+    return;
+}
+
 void exit( int x ) {
     asm volatile( "mov r0, %1 \n" // assign r0 =  x
     "svc %0     \n" // make system call SYS_EXIT

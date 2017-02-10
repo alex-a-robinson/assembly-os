@@ -109,8 +109,13 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             sys_exec(ctx, x);
             break;
         }
+        case SYS_PS: {
+            pid_t pid = (pid_t)(ctx->gpr[0]);
+            sys_ps(pid);
+            break;
+        }
         default: { // 0x?? => unknown/unsupported
-            error("unknown/unsupported system call");
+            error("unknown/unsupported system call\n");
             break;
         }
     }

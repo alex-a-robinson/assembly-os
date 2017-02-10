@@ -5,6 +5,8 @@ extern pcb_t* current;
 int sys_write(int fd, char* x, int n) {
     // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
 
+    current->priority.io_burst++;
+
     // Convert file handler to QEMU devices
     PL011_t* device = UART1; // defult to error
     if (fd == STDOUT_FILENO) {
@@ -19,8 +21,11 @@ int sys_write(int fd, char* x, int n) {
     return n;
 }
 
-int sys_read(int fd, char* x, int n) {
+int sys_read(int fd, char* x, int n) { // NOTE BLOCKING
     // TODO use differnt file handlers
+
+    current->priority.io_burst++;
+
     PL011_t* device = UART1; // defult to error
 
     // TODO test this works
@@ -50,17 +55,12 @@ void sys_fork(ctx_t* ctx) {
     // NOTE: Could implement wait system call which waits for child process to complete
 
     // Copy the process
-    pcb_t* new_process = process(pid);
-    save_ctx(ctx); // Save the ctx into current
-    memcpy(new_process, current, sizeof(pcb_t));
-
-    // Update its pid and ppid
-    new_process->pid = pid;
-    new_process->ppid = current->pid;
+    pcb_t* p = new_process(pid, current->pid, NULL, NULL);
+    memcpy(&p->ctx, ctx, sizeof(ctx_t));
 
     // Return child pid to parent and 0 to child
     ctx->gpr[0] = (uint32_t)pid;
-    new_process->ctx.gpr[0] = (uint32_t)0;
+    p->ctx.gpr[0] = (uint32_t)0;
 
     // Switch to the new process
     set_current(ctx, pid);
@@ -167,5 +167,28 @@ void fix_orphaned_processes(pid_t ppid) {
             process(pid)->ppid = 0;
         }
     }
+    return;
+}
+
+// Print process info
+void sys_ps(pid_t pid) {
+    if (!active_process(pid)) {
+        error("No process exists\n");
+        return;
+    }
+    pcb_t* p = process(pid);
+
+    error("PID ");
+    //error(TO_STRING(p->pid));
+    // error(", PPID ");
+    // error((char*)p->ppid);
+    // error(", PRIORITY ");
+    // error(->priority.priority);
+    //
+    // char buffer[1024];
+    // snprintf(buffer, sizeof(buffer), "PID %C, PPID %C, PRIORITY %C, CPU %C, IO %C, ARIVAL TIME %C",
+    //          p->pid, p->ppid, p->priority.priority, p->priority.cpu_burst,
+    //          p->priority.io_burst, p->priority.arrival_time);
+    // error(buffer);
     return;
 }

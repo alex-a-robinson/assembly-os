@@ -13,17 +13,36 @@ pcb_t* process(pid_t pid) {
     return &pcb[pid-1];
 }
 
+pcb_t* new_process(pid_t pid, pid_t ppid, ctx_t* ctx, priority_t* priority) {
+    pcb_t* p = process(pid);
+    p->pid = pid;
+    p->ppid = ppid;
+
+    // Set ctx
+    if (ctx == NULL) {
+        reset_ctx(&p->ctx, pid);
+    } else {
+        p->ctx = *ctx;
+    }
+
+    // Set priority
+    if (priority == NULL) {
+        reset_priority(pid);
+    } else {
+        p->priority = *priority;
+    }
+
+    return p;
+}
+
 // Returns 1 if process is active else 0
 int active_process(pid_t pid) {
-    return (process(pid)->ctx.pc != 0);
+    return ((process(pid) != NULL) && (process(pid)->ctx.pc != 0));
 }
 
 void init_pcbs() {
     for (pid_t pid=1; pid <= MAX_PROCESSES; pid++) {
-        memset(process(pid), 0, sizeof(pcb_t));
-        process(pid)->pid = pid;
-        process(pid)->ppid = 0; // Default to 0 ppid
-        reset_ctx(&process(pid)->ctx, pid);
+        new_process(pid, 0, NULL, NULL);
     }
 }
 
@@ -74,4 +93,12 @@ void set_current(ctx_t* ctx, pid_t pid) {
     current = process(pid);
     load_ctx(ctx);
     return;
+}
+
+void reset_priority(pid_t pid) {
+    priority_t p = process(pid)->priority;
+    p.priority = 0;
+    p.io_burst = 0;
+    p.cpu_burst = 0;
+    p.arrival_time = 0;
 }

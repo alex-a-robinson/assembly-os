@@ -23,5 +23,7 @@ void scheduler(ctx_t* ctx) {
         return;
     }
     set_current(ctx, pid);
+
+    process(pid)->priority.cpu_burst++;
     return;
 }

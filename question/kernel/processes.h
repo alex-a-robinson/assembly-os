@@ -22,6 +22,13 @@ typedef struct {
   uint32_t cpsr, pc, gpr[ 13 ], sp, lr;
 } ctx_t;
 
+typedef struct {
+    int priority;
+    int io_burst;
+    int cpu_burst;
+    int arrival_time;
+} priority_t;
+
 // TODO add pending signals
 // TODO add child exit code
 // TODO process groups? pgid
@@ -29,12 +36,14 @@ typedef struct {
   pid_t pid;
   pid_t ppid;
   ctx_t ctx;
+  priority_t priority;
 } pcb_t;
 
 // Max number of processes
 #define MAX_PROCESSES 3
 
 pcb_t* process(pid_t pid);
+pcb_t* new_process(pid_t pid, pid_t ppid, ctx_t* ctx, priority_t* priority);
 int active_process(pid_t pid);
 void init_pcbs();
 pid_t free_pid();
@@ -43,5 +52,7 @@ void load_ctx(ctx_t* ctx);
 void save_ctx(ctx_t* ctx);
 void reset_ctx(ctx_t* ctx, pid_t pid);
 void set_current(ctx_t* ctx, pid_t pid);
+
+void reset_priority(pid_t pid);
 
 #endif
