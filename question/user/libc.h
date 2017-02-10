@@ -32,6 +32,11 @@ typedef int pid_t;
 #define SYS_EXEC      ( 0x05 )
 #define SYS_KILL      ( 0x06 )
 #define SYS_PS        ( 0x07 )
+#define SYS_SHARE     ( 0x08 )
+#define SYS_USHARE    ( 0x09 )
+#define SYS_LOCK      ( 0x10 )
+#define SYS_UNLOCK    ( 0x11 )
+#define SYS_WAIT      ( 0x12 )
 
 #define SIG_TERM      ( 0x00 )
 #define SIG_QUIT      ( 0x01 )
@@ -68,5 +73,14 @@ extern void exec( const void* x );
 
 // signal process identified by pid with signal x
 extern int  kill( pid_t pid, int x );
+
+extern int share(void* ptr);
+extern int unshare(void* ptr);
+extern int lock(void* ptr);
+extern int unlock(void* ptr);
+
+void sleep(int t);
+
+int wait(int pid);
 
 #endif

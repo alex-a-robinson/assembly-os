@@ -30,6 +30,11 @@ typedef struct {
     int time_left;
 } priority_t;
 
+typedef struct {
+    void* ptr;
+    int locked;
+} shared_t;
+
 // TODO add pending signals
 // TODO add child exit code
 // TODO process groups? pgid
@@ -38,6 +43,7 @@ typedef struct {
   pid_t ppid;
   ctx_t ctx;
   priority_t priority;
+  shared_t shared;
 } pcb_t;
 
 // Max number of processes
@@ -55,5 +61,10 @@ void reset_ctx(ctx_t* ctx, pid_t pid);
 void set_current(ctx_t* ctx, pid_t pid);
 
 void reset_priority(pcb_t* p);
+
+int share(pid_t pid, void* ptr);
+int unshare(pid_t pid, void* ptr);
+int lock(pid_t pid, void* ptr);
+int unlock(pid_t pid, void* ptr);
 
 #endif

@@ -120,6 +120,36 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             }
             break;
         }
+        case SYS_SHARE: {
+            void* ptr = (void*)(ctx->gpr[0]);
+            int r = sys_share(ctx, ptr);
+            ctx->gpr[0] = r;
+            break;
+        }
+        case SYS_UNSHARE: {
+            void* ptr = (void*)(ctx->gpr[0]);
+            int r = sys_unshare(ctx, ptr);
+            ctx->gpr[0] = r;
+            break;
+        }
+        case SYS_LOCK: {
+            void* ptr = (void*)(ctx->gpr[0]);
+            int r = sys_lock(ctx, ptr);
+            ctx->gpr[0] = r;
+            break;
+        }
+        case SYS_UNLOCK: {
+            void* ptr = (void*)(ctx->gpr[0]);
+            int r = sys_unlock(ctx, ptr);
+            ctx->gpr[0] = r;
+            break;
+        }
+        case SYS_WAIT: {
+            pid_t pid = (void*)(ctx->gpr[0]);
+            int r = sys_wait(ctx, pid);
+            ctx->gpr[0] = r;
+            break;
+        }
         default: { // 0x?? => unknown/unsupported
             error("unknown/unsupported system call\n");
             break;

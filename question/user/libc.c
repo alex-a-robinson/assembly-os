@@ -91,7 +91,7 @@ int  read( int fd,       void* x, size_t n ) {
 int fork() {
     int r;
 
-    asm volatile( "svc %1     \n" // make system call SYS_FORK
+    asm volatile("svc %1     \n" // make system call SYS_FORK
     "mov %0, r0 \n" // assign r  = r0
     : "=r" (r)
     : "I" (SYS_FORK)
@@ -142,4 +142,87 @@ int kill( int pid, int x ) {
     : "r0", "r1" );
 
     return r;
+}
+
+int share( void* ptr ) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 =  ptr
+    "svc %1     \n" // make system call SYS_SHARE
+    "mov %0, r0 \n" // assign r0 =    r
+    : "=r" (r)
+    : "I" (SYS_SHARE), "r" (ptr)
+    : "r0");
+
+    return r;
+}
+
+int unshare( void* ptr ) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 =  ptr
+    "svc %1     \n" // make system call SYS_UNSHARE
+    "mov %0, r0 \n" // assign r0 =    r
+    : "=r" (r)
+    : "I" (SYS_UNSHARE), "r" (ptr)
+    : "r0");
+
+    return r;
+}
+
+int _lock( void* ptr ) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 =  ptr
+    "svc %1     \n" // make system call SYS_LOCK
+    "mov %0, r0 \n" // assign r0 =    r
+    : "=r" (r)
+    : "I" (SYS_LOCK), "r" (ptr)
+    : "r0");
+
+    return r;
+}
+
+int lock(void* ptr) {
+    int locked = _lock(ptr);
+    while (!locked) {
+        yield(); // No point waiting when it cannot be unlocked while we're on the cpu
+        locked = _lock(ptr);
+    }
+    return locked;
+}
+
+int unlock( void* ptr ) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 =  ptr
+    "svc %1     \n" // make system call SYS_UNLOCK
+    "mov %0, r0 \n" // assign r0 =    r
+    : "=r" (r)
+    : "I" (SYS_UNLOCK), "r" (ptr)
+    : "r0");
+
+    return r;
+}
+
+int wait(int pid) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 =  pid
+    "svc %1     \n" // make system call SYS_WAIT
+    "mov %0, r0 \n" // assign r0 =    r
+    : "=r" (r)
+    : "I" (SYS_WAIT), "r" (pid)
+    : "r0");
+
+    return r;
+}
+
+void sleep(int t) {
+    // TODO use sleeping flag on process
+    int x = 0;
+    for (int i=0; i<1000*t; i++) {
+        x++;
+    }
+    return;
 }

@@ -200,3 +200,40 @@ void sys_ps() {
     }
     return;
 }
+
+int sys_share(ctx_t* ctx, void* ptr) {
+    int shared = share(current->pid, ptr);
+    if (shared == 0) {
+        error("Couldn't be shared, something may already be shared\n");
+    }
+    return shared;
+}
+
+int sys_unshare(ctx_t* ctx, void* ptr) {
+    int unshared = unshare(current->pid, ptr);
+    if (unshared == 0) {
+        error("Memory is not shared\n");
+    }
+    return unshared;
+}
+
+int sys_lock(ctx_t* ctx, void* ptr) {
+    int locked = lock(current->pid, ptr);
+    if (locked == -1) {
+        error("Memory not shared\n");
+    }
+    return locked;
+}
+
+int sys_unlock(ctx_t* ctx, void* ptr) {
+    int unlocked = unlock(current->pid, ptr);
+    if (unlocked == -1) {
+        error("Memory not shared\n");
+    }
+    return unlocked;
+}
+
+int sys_wait(ctx_t* ctx, pid_t pid) {
+    // TODO
+    return;
+}

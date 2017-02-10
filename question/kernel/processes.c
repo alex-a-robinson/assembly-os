@@ -14,6 +14,14 @@ pcb_t* process(pid_t pid) {
     return &pcb[pid-1];
 }
 
+pcb_t* parent_process(pid_t pid) {
+    pcb_t* p = process(pid);
+    if (p->ppid == 0) {
+        return NULL;
+    }
+    return process(p->ppid);
+}
+
 void reset_priority(pcb_t* p) {
     p->priority.priority = 0;
     p->priority.io_burst = 0;
@@ -93,4 +101,64 @@ void set_current(ctx_t* ctx, pid_t pid) {
     current = process(pid);
     load_ctx(ctx);
     return;
+}
+
+// Returns the location of the shared pointer (either own or parents) or NULL if not accessible
+shared_t* is_shared(pid_t pid, void* ptr) {
+    pcb_t* p = process(pid);
+    if (p->shared.ptr == ptr) {
+        return &p->shared;
+    } else if (process(p->ppid) != NULL && process(p->ppid)->shared.ptr == ptr) {
+        return &process(p->ppid)->shared;
+    }
+
+    return NULL;
+}
+
+int share(pid_t pid, void* ptr) {
+    pcb_t* p = process(pid);
+    if (p->shared.ptr != NULL) {
+        return 0; // Something already shared, error
+    }
+    p->shared.ptr = ptr;
+    return 1;
+}
+
+int unshare(pid_t pid, void* ptr) {
+    pcb_t* p = process(pid);
+    if (p->shared.ptr != ptr) {
+        return 0; // ptr is not shared, error
+    }
+    p->shared.ptr = NULL;
+    return 1;
+}
+
+int lock(pid_t pid, void* ptr) {
+    shared_t* shared = is_shared(pid, ptr);
+
+    if (shared == NULL) {
+        return -1;
+    }
+
+    if (shared->locked) {
+        return 0;
+    } else {
+        shared->locked = 1;
+        return 1;
+    }
+}
+
+int unlock(pid_t pid, void* ptr) {
+    shared_t* shared = is_shared(pid, ptr);
+
+    if (shared == NULL) {
+        return -1;
+    }
+
+    if (shared->locked) {
+        shared->locked = 0;
+        return 1;
+    } else {
+        return 0;
+    }
 }

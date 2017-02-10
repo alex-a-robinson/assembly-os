@@ -32,6 +32,11 @@
 #define SYS_EXEC      ( 0x05 )
 #define SYS_KILL      ( 0x06 )
 #define SYS_PS        ( 0x07 )
+#define SYS_SHARE     ( 0x08 )
+#define SYS_USHARE    ( 0x09 )
+#define SYS_LOCK      ( 0x10 )
+#define SYS_UNLOCK    ( 0x11 )
+#define SYS_WAIT      ( 0x12 )
 
 #define SIG_TERM      ( 0x00 )
 #define SIG_QUIT      ( 0x01 )
@@ -53,5 +58,12 @@ void sys_exec(ctx_t* ctx, void* x);
 void fix_orphaned_processes(pid_t ppid);
 void ps_stats(pid_t pid);
 void sys_ps();
+
+int sys_share(ctx_t* ctx, void* ptr);
+int sys_unshare(ctx_t* ctx, void* ptr);
+int sys_lock(ctx_t* ctx, void* ptr);
+int sys_unlock(ctx_t* ctx, void* ptr);
+
+int sys_wait(ctx_t* ctx, pid_t pid);
 
 #endif
