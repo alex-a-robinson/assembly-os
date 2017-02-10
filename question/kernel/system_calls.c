@@ -170,25 +170,6 @@ void fix_orphaned_processes(pid_t ppid) {
     return;
 }
 
-// Copy the int x to the end of the string s
-char* s(char* b, int x) {
-    b[0] = '\0';
-    if (x == 0) { // Little hack beacuse itoa dosen't like 0
-        b = "0";
-    } else {
-        sitoa(b, x);
-    }
-    return b;
-}
-
-// sf with padding
-char* sfp(char* s, int x) {
-    char buffer[1024];
-    sitoa(buffer, x);
-
-    return strcpy(strcpy(strcpy(s, " "), buffer), " ");
-}
-
 // Print process info
 void ps_stats(pid_t pid) {
     if (!active_process(pid)) {

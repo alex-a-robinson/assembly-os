@@ -29,3 +29,14 @@ void sitoa( char* r, int x ) {
 
     return;
 }
+
+// Copy the int x to the end of the string s
+char* s(char* b, int x) {
+    b[0] = '\0';
+    if (x == 0) { // Little hack beacuse itoa dosen't like 0
+        b = "0";
+    } else {
+        sitoa(b, x);
+    }
+    return b;
+}

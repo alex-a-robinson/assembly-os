@@ -6,6 +6,6 @@
 #include "system_calls.h"
 
 void error(char* msg);
-void sitoa( char* r, int x );
+char* s(char* b, int x);
 
 #endif
