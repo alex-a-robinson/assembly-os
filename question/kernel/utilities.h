@@ -5,8 +5,7 @@
 
 #include "system_calls.h"
 
-#define TO_STRING(val) #val
-
 void error(char* msg);
+void sitoa( char* r, int x );
 
 #endif

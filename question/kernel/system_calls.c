@@ -170,25 +170,50 @@ void fix_orphaned_processes(pid_t ppid) {
     return;
 }
 
+// Copy the int x to the end of the string s
+char* s(char* b, int x) {
+    b[0] = '\0';
+    if (x == 0) { // Little hack beacuse itoa dosen't like 0
+        b = "0";
+    } else {
+        sitoa(b, x);
+    }
+    return b;
+}
+
+// sf with padding
+char* sfp(char* s, int x) {
+    char buffer[1024];
+    sitoa(buffer, x);
+
+    return strcpy(strcpy(strcpy(s, " "), buffer), " ");
+}
+
 // Print process info
-void sys_ps(pid_t pid) {
+void ps_stats(pid_t pid) {
     if (!active_process(pid)) {
         error("No process exists\n");
         return;
     }
     pcb_t* p = process(pid);
 
-    error("PID ");
-    //error(TO_STRING(p->pid));
-    // error(", PPID ");
-    // error((char*)p->ppid);
-    // error(", PRIORITY ");
-    // error(->priority.priority);
-    //
-    // char buffer[1024];
-    // snprintf(buffer, sizeof(buffer), "PID %C, PPID %C, PRIORITY %C, CPU %C, IO %C, ARIVAL TIME %C",
-    //          p->pid, p->ppid, p->priority.priority, p->priority.cpu_burst,
-    //          p->priority.io_burst, p->priority.arrival_time);
-    // error(buffer);
+    char b[1024];
+    error("PID "); error(s(b, p->pid));
+    error(", PPID "); error(s(b, p->ppid));
+    error(", PRIORITY "); error(s(b, p->priority.priority));
+    error(", CPU "); error(s(b, p->priority.cpu_burst));
+    error(", IO "); error(s(b, p->priority.io_burst));
+    error(", ARIVAL TIME "); error(s(b, p->priority.arrival_time));
+    error("\n");
+
+    return;
+}
+
+void sys_ps() {
+    for (pid_t pid=1; pid <= MAX_PROCESSES; pid++) {
+        if (active_process(pid)) {
+            ps_stats(pid);
+        }
+    }
     return;
 }

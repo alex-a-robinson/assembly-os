@@ -111,7 +111,11 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         }
         case SYS_PS: {
             pid_t pid = (pid_t)(ctx->gpr[0]);
-            sys_ps(pid);
+            if (pid == 0) {
+                sys_ps();
+            } else {
+                ps_stats(pid);
+            }
             break;
         }
         default: { // 0x?? => unknown/unsupported
