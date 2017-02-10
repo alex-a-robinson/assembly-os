@@ -9,6 +9,8 @@
 * NOTE: Access to pointer is security violation? Pass with it size so can only access some amount
 */
 
+int forks[PHILOSOPHERS];
+
 void philosopher() {//int id) {
     int eaten = 0;
     //int take_fork_off_id = (id+1) % PHILOSOPHERS; // right handed
@@ -28,8 +30,9 @@ void philosopher() {//int id) {
 
 void main_dp() {
     // Init array (all to 1 except 1)
-    int forks[PHILOSOPHERS];
-    for (int i=0; i<PHILOSOPHERS-1; i++) { forks[i] = 1; }
+    for (int i=0; i<PHILOSOPHERS-1; i++) {
+        forks[i] = 1;
+    }
 
     // Share forks memeory
     share(forks);
