@@ -27,6 +27,7 @@ typedef struct {
     int io_burst;
     int cpu_burst;
     int arrival_time;
+    int time_left;
 } priority_t;
 
 // TODO add pending signals
@@ -43,7 +44,7 @@ typedef struct {
 #define MAX_PROCESSES 3
 
 pcb_t* process(pid_t pid);
-pcb_t* new_process(pid_t pid, pid_t ppid, ctx_t* ctx, priority_t* priority);
+pcb_t* new_process(pid_t pid, pid_t ppid);
 int active_process(pid_t pid);
 void init_pcbs();
 pid_t free_pid();
@@ -53,6 +54,6 @@ void save_ctx(ctx_t* ctx);
 void reset_ctx(ctx_t* ctx, pid_t pid);
 void set_current(ctx_t* ctx, pid_t pid);
 
-void reset_priority(pid_t pid);
+void reset_priority(pcb_t* p);
 
 #endif

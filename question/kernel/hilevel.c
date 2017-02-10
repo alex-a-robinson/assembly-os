@@ -3,6 +3,7 @@
 // Programs
 extern void main_console();
 extern pcb_t* current;
+int BURTS = 0;
 
 void hilevel_handler_rst(ctx_t* ctx) {
     // Initialise PCBs representing processes
@@ -26,7 +27,7 @@ void hilevel_handler_rst(ctx_t* ctx) {
     * - enabling IRQ interrupts.
     */
 
-    TIMER0->Timer1Load = 0x00100000; // select period = 2^20 ticks ~= 1 sec
+    TIMER0->Timer1Load = 0x00020000; // 0x00020000 ~ 0.125 seconds, select period 0x00100000 = 2^20 ticks ~= 1 sec
     TIMER0->Timer1Ctrl = 0x00000002; // select 32-bit   timer
     TIMER0->Timer1Ctrl |= 0x00000040; // select periodic timer
     TIMER0->Timer1Ctrl |= 0x00000020; // enable          timer interrupt
@@ -48,6 +49,7 @@ void hilevel_handler_irq(ctx_t* ctx) {
 
     // Step 4: handle the interrupt, then clear (or reset) the source.
     if (id == GIC_SOURCE_TIMER0) { // Timer
+        BURTS++;
         scheduler(ctx);
         TIMER0->Timer1IntClr = 0x01;
     }

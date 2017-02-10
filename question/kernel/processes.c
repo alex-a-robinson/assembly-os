@@ -1,6 +1,7 @@
 #include "processes.h"
 
 pcb_t pcb[MAX_PROCESSES], *current = NULL;
+extern int BURTS;
 
 // Stacks
 extern uint32_t tos_P1;
@@ -13,24 +14,37 @@ pcb_t* process(pid_t pid) {
     return &pcb[pid-1];
 }
 
-pcb_t* new_process(pid_t pid, pid_t ppid, ctx_t* ctx, priority_t* priority) {
+void reset_priority(pcb_t* p) {
+    p->priority.priority = 0;
+    p->priority.io_burst = 0;
+    p->priority.cpu_burst = 0;
+    p->priority.arrival_time = BURTS;
+    p->priority.time_left = 0;
+}
+
+void reset_ctx(ctx_t* ctx, pid_t pid) {
+    /* The CPSR value of 0x50 means the processor is switched into USR
+    *   mode, with IRQ interrupts enabled, and
+    * - the PC and SP values matche the entry point and top of stack.
+    */
+    ctx->pc = (uint32_t)0;
+    ctx->cpsr = 0x50;
+    memset(&ctx->gpr, (uint32_t)0, sizeof(ctx->gpr));
+    ctx->sp = sps[pid-1];
+    ctx->lr = (uint32_t)0;
+
+    return;
+}
+
+pcb_t* new_process(pid_t pid, pid_t ppid) {
     pcb_t* p = process(pid);
+    memset(p, 0, sizeof(pcb_t));
     p->pid = pid;
     p->ppid = ppid;
 
-    // Set ctx
-    if (ctx == NULL) {
-        reset_ctx(&p->ctx, pid);
-    } else {
-        p->ctx = *ctx;
-    }
-
-    // Set priority
-    if (priority == NULL) {
-        reset_priority(pid);
-    } else {
-        p->priority = *priority;
-    }
+    // Set priority & ctx
+    reset_priority(p);
+    reset_ctx(&p->ctx, pid); // NOTE doens't execute past here?
 
     return p;
 }
@@ -42,7 +56,7 @@ int active_process(pid_t pid) {
 
 void init_pcbs() {
     for (pid_t pid=1; pid <= MAX_PROCESSES; pid++) {
-        new_process(pid, 0, NULL, NULL);
+        new_process(pid, 0);
     }
 }
 
@@ -69,20 +83,6 @@ void save_ctx(ctx_t* ctx) {
     return;
 }
 
-void reset_ctx(ctx_t* ctx, pid_t pid) {
-    /* The CPSR value of 0x50 means the processor is switched into USR
-    *   mode, with IRQ interrupts enabled, and
-    * - the PC and SP values matche the entry point and top of stack.
-    */
-    ctx->pc = (uint32_t)0;
-    ctx->cpsr = 0x50;
-    memset(&ctx->gpr, (uint32_t)0, sizeof(ctx->gpr));
-    ctx->sp = sps[pid-1];
-    ctx->lr = (uint32_t)0;
-
-    return;
-}
-
 // Switch current process
 void set_current(ctx_t* ctx, pid_t pid) {
     // No need to switch if current
@@ -93,12 +93,4 @@ void set_current(ctx_t* ctx, pid_t pid) {
     current = process(pid);
     load_ctx(ctx);
     return;
-}
-
-void reset_priority(pid_t pid) {
-    priority_t p = process(pid)->priority;
-    p.priority = 0;
-    p.io_burst = 0;
-    p.cpu_burst = 0;
-    p.arrival_time = 0;
 }

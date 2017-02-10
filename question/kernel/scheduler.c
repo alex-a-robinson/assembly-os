@@ -15,15 +15,25 @@ pid_t next_pid() {
     return -1;
 }
 
+void calculate_priorities() {
+    // TODO
+    return;
+}
+
 // Select the next process and switch to it
 void scheduler(ctx_t* ctx) {
+    if (current->priority.time_left > 0) {
+        current->priority.time_left--;
+        return;
+    }
+    calculate_priorities();
     pid_t pid = next_pid();
     if (pid == -1) {
         // TODO scope error("No processes to schedule");
         return;
     }
     set_current(ctx, pid);
-
-    process(pid)->priority.cpu_burst++;
+    current->priority.time_left = 3; // TODO give it 3 burts
+    current->priority.cpu_burst++;
     return;
 }

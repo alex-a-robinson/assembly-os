@@ -55,7 +55,7 @@ void sys_fork(ctx_t* ctx) {
     // NOTE: Could implement wait system call which waits for child process to complete
 
     // Copy the process
-    pcb_t* p = new_process(pid, current->pid, NULL, NULL);
+    pcb_t* p = new_process(pid, current->pid);
     memcpy(&p->ctx, ctx, sizeof(ctx_t));
 
     // Return child pid to parent and 0 to child
@@ -185,6 +185,7 @@ void ps_stats(pid_t pid) {
     error(", CPU "); error(s(b, p->priority.cpu_burst));
     error(", IO "); error(s(b, p->priority.io_burst));
     error(", ARIVAL TIME "); error(s(b, p->priority.arrival_time));
+    error(", TIME LEFT "); error(s(b, p->priority.time_left));
     error("\n");
 
     return;
