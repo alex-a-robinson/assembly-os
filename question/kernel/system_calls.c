@@ -235,5 +235,19 @@ int sys_unlock(ctx_t* ctx, void* ptr) {
 
 int sys_wait(ctx_t* ctx, pid_t pid) {
     // TODO
-    return;
+    if (!active_process(pid)) {
+        error("Process is not active\n");
+        return -1;
+    }
+
+    waiting_t waiting = current->waiting;
+    if (waiting.pid == 0) { // If not already waiting, start
+        waiting.pid = pid;
+        waiting.result = -1;
+    } else if (waiting.pid == pid) { // If already waiting show result
+        return waiting.result;
+    }
+    // Waiting for another pid
+    error("Already waiting for another process\n");
+    return -2;
 }

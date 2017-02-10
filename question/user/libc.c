@@ -205,7 +205,7 @@ int unlock( void* ptr ) {
     return r;
 }
 
-int wait(int pid) {
+int _wait(int pid) {
     int r;
 
     asm volatile( "mov r0, %2 \n" // assign r0 =  pid
@@ -216,6 +216,21 @@ int wait(int pid) {
     : "r0");
 
     return r;
+}
+
+int wait(int pid) {
+    int result = _wait(pid);
+    while (result == -1) {
+        yield();
+        result = _wait(pid);
+    }
+
+    if (result == -2) {
+        err("Already waiting for another process\n");
+        return -1;
+    }
+
+    return result;
 }
 
 void sleep(int t) {

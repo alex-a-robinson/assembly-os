@@ -2,19 +2,19 @@
 #define __PROCESSES_H
 
 /* The kernel source code is made simpler via three type definitions:
- *
- * - a type that captures a Process IDentifier (PID), which is really
- *   just an integer,
- * - a type that captures each component of an execution context (i.e.,
- *   processor state) in a compatible order wrt. the low-level handler
- *   preservation and restoration prologue and epilogue, and
- * - a type that captures a process PCB.
- */
+*
+* - a type that captures a Process IDentifier (PID), which is really
+*   just an integer,
+* - a type that captures each component of an execution context (i.e.,
+*   processor state) in a compatible order wrt. the low-level handler
+*   preservation and restoration prologue and epilogue, and
+* - a type that captures a process PCB.
+*/
 
- #include <stdbool.h>
- #include <stddef.h>
- #include <stdint.h>
- #include <string.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
 
 typedef int pid_t;
 
@@ -23,17 +23,22 @@ typedef struct {
 } ctx_t;
 
 typedef struct {
-    int priority;
-    int io_burst;
-    int cpu_burst;
-    int arrival_time;
-    int time_left;
+  int priority;
+  int io_burst;
+  int cpu_burst;
+  int arrival_time;
+  int time_left;
 } priority_t;
 
 typedef struct {
-    void* ptr;
-    int locked;
+  void* ptr;
+  int locked;
 } shared_t;
+
+typedef struct {
+  pid_t pid;
+  int result;
+} waiting_t;
 
 // TODO add pending signals
 // TODO add child exit code
@@ -44,6 +49,7 @@ typedef struct {
   ctx_t ctx;
   priority_t priority;
   shared_t shared;
+  waiting_t waiting;
 } pcb_t;
 
 // Max number of processes
