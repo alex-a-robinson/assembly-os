@@ -144,7 +144,7 @@ int kill( int pid, int x ) {
     return r;
 }
 
-int share( void* ptr ) {
+int sharem( void* ptr ) {
     int r;
 
     asm volatile( "mov r0, %2 \n" // assign r0 =  ptr
@@ -157,7 +157,7 @@ int share( void* ptr ) {
     return r;
 }
 
-int unshare( void* ptr ) {
+int unsharem( void* ptr ) {
     int r;
 
     asm volatile( "mov r0, %2 \n" // assign r0 =  ptr
@@ -170,7 +170,7 @@ int unshare( void* ptr ) {
     return r;
 }
 
-int _lock( void* ptr ) {
+int _lockm( void* ptr ) {
     int r;
 
     asm volatile( "mov r0, %2 \n" // assign r0 =  ptr
@@ -183,16 +183,16 @@ int _lock( void* ptr ) {
     return r;
 }
 
-int lock(void* ptr) {
-    int locked = _lock(ptr);
+int lockm(void* ptr) {
+    int locked = _lockm(ptr);
     while (!locked) {
         yield(); // No point waiting when it cannot be unlocked while we're on the cpu
-        locked = _lock(ptr);
+        locked = _lockm(ptr);
     }
     return locked;
 }
 
-int unlock( void* ptr ) {
+int unlockm( void* ptr ) {
     int r;
 
     asm volatile( "mov r0, %2 \n" // assign r0 =  ptr
@@ -205,7 +205,7 @@ int unlock( void* ptr ) {
     return r;
 }
 
-int _wait(int pid) {
+int _waitp(int pid) {
     int r;
 
     asm volatile( "mov r0, %2 \n" // assign r0 =  pid
@@ -218,11 +218,11 @@ int _wait(int pid) {
     return r;
 }
 
-int wait(int pid) {
-    int result = _wait(pid);
+int waitp(int pid) {
+    int result = _waitp(pid);
     while (result == -1) {
         yield();
-        result = _wait(pid);
+        result = _waitp(pid);
     }
 
     if (result == -2) {

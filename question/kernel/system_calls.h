@@ -33,7 +33,7 @@
 #define SYS_KILL      ( 0x06 )
 #define SYS_PS        ( 0x07 )
 #define SYS_SHARE     ( 0x08 )
-#define SYS_USHARE    ( 0x09 )
+#define SYS_UNSHARE    ( 0x09 )
 #define SYS_LOCK      ( 0x10 )
 #define SYS_UNLOCK    ( 0x11 )
 #define SYS_WAIT      ( 0x12 )

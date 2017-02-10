@@ -20,6 +20,7 @@ void gets(char* x, int n) {
 extern void main_P3();
 extern void main_P4();
 extern void main_P5();
+extern void main_dp();
 
 void* load(char* x) {
     if (0 == strcmp(x, "P3")) {
@@ -28,6 +29,8 @@ void* load(char* x) {
         return &main_P4;
     } else if (0 == strcmp(x, "P5")) {
         return &main_P5;
+    } else if (0 == strcmp(x, "DP")) {
+        return &main_dp;
     }
 
     return NULL;
