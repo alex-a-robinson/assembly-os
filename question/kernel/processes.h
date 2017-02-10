@@ -53,7 +53,7 @@ typedef struct {
 } pcb_t;
 
 // Max number of processes
-#define MAX_PROCESSES 3
+#define MAX_PROCESSES 6
 
 pcb_t* process(pid_t pid);
 pcb_t* new_process(pid_t pid, pid_t ppid);

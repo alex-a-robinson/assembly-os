@@ -13,6 +13,7 @@ int forks[PHILOSOPHERS];
 
 void philosopher() {//int id) {
     int eaten = 0;
+    err("Spawned!\n");
     //int take_fork_off_id = (id+1) % PHILOSOPHERS; // right handed
     while (!eaten) {
         sleep(1); // Thinking
@@ -25,6 +26,8 @@ void philosopher() {//int id) {
         unlockm(forks); // blocking
     }
 
+    err("philosopher eaten!\n");
+
     exit(EXIT_SUCCESS);
 }
 
@@ -34,8 +37,12 @@ void main_dp() {
         forks[i] = 1;
     }
 
+    err("Iniated forks\n");
+
     // Share forks memeory
     sharem(forks);
+
+    err("Spawning philisophers\n");
 
     // Spawn philosphers
     int philosopher_pids[PHILOSOPHERS] = {0};
@@ -48,10 +55,14 @@ void main_dp() {
         }
     }
 
+    err("Waiting for responses\n");
+
     // Wait until they are all complete
     for (int i=0; i<PHILOSOPHERS; i++) {
         waitp(philosopher_pids[i]);
     }
+
+    err("Done!");
 
     exit(EXIT_SUCCESS);
 }

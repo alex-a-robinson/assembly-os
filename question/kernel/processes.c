@@ -7,7 +7,12 @@ extern int BURSTS;
 extern uint32_t tos_P1;
 extern uint32_t tos_P2;
 extern uint32_t tos_P3;
-uint32_t sps[] = {(uint32_t)(&tos_P1), (uint32_t)(&tos_P2), (uint32_t)(&tos_P3)};
+extern uint32_t tos_P4;
+extern uint32_t tos_P5;
+extern uint32_t tos_P6;
+// TODO dynamically by adding to pointers
+uint32_t sps[] = {(uint32_t)(&tos_P1), (uint32_t)(&tos_P2), (uint32_t)(&tos_P3),
+                  (uint32_t)(&tos_P4), (uint32_t)(&tos_P5), (uint32_t)(&tos_P6)};
 
 // Return process
 pcb_t* process(pid_t pid) {
