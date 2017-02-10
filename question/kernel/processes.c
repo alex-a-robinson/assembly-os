@@ -1,7 +1,7 @@
 #include "processes.h"
 
 pcb_t pcb[MAX_PROCESSES], *current = NULL;
-extern int BURTS;
+extern int BURSTS;
 
 // Stacks
 extern uint32_t tos_P1;
@@ -18,7 +18,7 @@ void reset_priority(pcb_t* p) {
     p->priority.priority = 0;
     p->priority.io_burst = 0;
     p->priority.cpu_burst = 0;
-    p->priority.arrival_time = BURTS;
+    p->priority.arrival_time = BURSTS;
     p->priority.time_left = 0;
 }
 

@@ -3,7 +3,7 @@
 // Programs
 extern void main_console();
 extern pcb_t* current;
-int BURTS = 0;
+int BURSTS = 0;
 
 void hilevel_handler_rst(ctx_t* ctx) {
     // Initialise PCBs representing processes
@@ -49,7 +49,7 @@ void hilevel_handler_irq(ctx_t* ctx) {
 
     // Step 4: handle the interrupt, then clear (or reset) the source.
     if (id == GIC_SOURCE_TIMER0) { // Timer
-        BURTS++;
+        BURSTS++;
         scheduler(ctx);
         TIMER0->Timer1IntClr = 0x01;
     }
