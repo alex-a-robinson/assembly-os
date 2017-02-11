@@ -232,6 +232,7 @@ int _waitp(int pid) {
 int waitp(int pid) {
     int result = _waitp(pid);
     while (result == -1) { // -1 shows still waiting
+        err("W");
         yield();
         result = _waitp(pid);
     }
@@ -243,11 +244,31 @@ int waitp(int pid) {
     return result;
 }
 
+// TODO silly function for sleep
+int _slow( uint32_t x ) {
+    if ( !( x & 1 ) || ( x < 2 ) ) {
+        return ( x == 2 );
+    }
+
+    for( uint32_t d = 3; ( d * d ) <= x ; d += 2 ) {
+        if( !( x % d ) ) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 void sleep(int t) {
     // TODO use sleeping flag on process
     int x = 0;
-    for (int i=0; i<100000*t; i++) {
-        x++;
+    for (int i=0; i<4*t; i++) {
+        uint32_t lo = 1 <<  8;
+        uint32_t hi = 1 << 16;
+
+        for( uint32_t x = lo; x < hi; x++ ) {
+            int r = _slow(x);
+        }
     }
     return;
 }

@@ -61,7 +61,7 @@ void sys_fork(ctx_t* ctx) {
     p->ctx.gpr[0] = (uint32_t)0;
 
     // Switch to the new process
-    //set_current(ctx, pid); Not needed
+    set_current(ctx, pid);
 
     return;
 }
@@ -72,7 +72,8 @@ void sys_exit(ctx_t* ctx, int x) {
     fix_orphaned_processes(current->pid);
 
     new_process(current->pid, 0);
-    load_ctx(ctx);
+    reset_ctx(ctx, current->pid); // is this any differnt from new_process then load_ctx?
+    //load_ctx(ctx);
 
     scheduler(ctx);
     return;
@@ -107,6 +108,7 @@ int sys_kill(ctx_t* ctx, pid_t pid, uint32_t sig) {
             // If killing current process, reset ctx and run scheduler,
             // otherwise update processes ctx so when scheduler next run
             // it will be free
+            // TODO Make same as exit, FIX exit
             fix_orphaned_processes(current->pid);
             update_waiters(current->pid, EXIT_FAILURE);
             if (current->pid == pid) {
@@ -243,10 +245,12 @@ int sys_wait(ctx_t* ctx, pid_t pid) {
     }
 
     int result = waiting->result;
-    if (result != -1) { // If we have a result then reset
-        waiting->pid = 0;
-        waiting->result = -1;
+    if (result == -1) {
+        return result;
     }
+    // If we have a result then reset
+    waiting->pid = 0;
+    waiting->result = -1;
 
     return result;
 }

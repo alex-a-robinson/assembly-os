@@ -21,7 +21,8 @@ void main_P5() {
     }
     err("Spawned P3\n");
     int r = waitp(pid);
-    err("Returned with\n");
+    char b[1024];
+    err("Returned with");err(ss(b,r));err("\n");
 
     while( 1 ) {
         write( STDOUT_FILENO, "P5", 2 );
