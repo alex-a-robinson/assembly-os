@@ -86,5 +86,6 @@ void sleep(int t);
 
 int waitp(int pid);
 int waitpnb(int pid);
+int fork_wait();
 
 #endif

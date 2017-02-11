@@ -217,7 +217,7 @@ int sys_share(ctx_t* ctx, void* ptr) {
 int sys_unshare(ctx_t* ctx, void* ptr) {
     int unshared = unshare(current->pid, ptr);
     if (unshared == 0) {
-        error("Memory is not shared\n");
+        error("Memory is not shared for unshare\n");
     }
     return unshared;
 }
@@ -225,7 +225,7 @@ int sys_unshare(ctx_t* ctx, void* ptr) {
 int sys_lock(ctx_t* ctx, void* ptr) {
     int locked = lock(current->pid, ptr);
     if (locked == -1) {
-        error("Memory not shared\n");
+        error("Memory not shared for lock\n");
     }
     return locked;
 }
@@ -233,7 +233,7 @@ int sys_lock(ctx_t* ctx, void* ptr) {
 int sys_unlock(ctx_t* ctx, void* ptr) {
     int unlocked = unlock(current->pid, ptr);
     if (unlocked == -1) {
-        error("Memory not shared\n");
+        error("Memory not shared for unlock\n");
     }
     return unlocked;
 }

@@ -4,9 +4,9 @@ extern pcb_t* current;
 
 // Implements scheduling algorithm
 pid_t next_pid() {
-    pid_t pid = current->pid;
+    pid_t pid;
     for (int i=0; i < MAX_PROCESSES; i++) {
-        pid = (pid % MAX_PROCESSES) + 1;
+        pid = ((current->pid + i) % MAX_PROCESSES) + 1;
         if (active_process(pid)) {
             return pid;
         }
