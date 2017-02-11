@@ -220,14 +220,13 @@ int _waitp(int pid) {
 
 int waitp(int pid) {
     int result = _waitp(pid);
-    while (result == -1) {
+    while (result == -1) { // -1 shows still waiting
         yield();
         result = _waitp(pid);
     }
 
     if (result == -2) {
-        err("Already waiting for another process\n");
-        return -1;
+        return -1; // Return an error
     }
 
     return result;

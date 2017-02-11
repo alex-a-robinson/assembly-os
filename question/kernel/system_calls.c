@@ -70,9 +70,12 @@ void sys_fork(ctx_t* ctx) {
 
 void sys_exit(ctx_t* ctx, int x) {
     // Reset ctx (scheduler will update current with this) and run scheduler
-    reset_ctx(ctx, current->pid);
     update_waiters(current->pid, x);
     fix_orphaned_processes(current->pid);
+
+    new_process(current->pid, 0);
+    load_ctx(ctx);
+
     scheduler(ctx);
     return;
 }
@@ -229,11 +232,6 @@ int sys_unlock(ctx_t* ctx, void* ptr) {
 }
 
 int sys_wait(ctx_t* ctx, pid_t pid) {
-    if (!active_process(pid)) {
-        error("Process is not active\n");
-        return -2;
-    }
-
     // use the waitings lists and waiter lists
     waiting_t* waiting = get_waiting(current->pid, pid);
 

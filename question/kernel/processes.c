@@ -195,11 +195,15 @@ waiting_t* set_waiting(pid_t pid, pid_t waiting_pid) {
     waiter_t waiter;
     waiter.pid = pid;
 
+    if (!active_process(waiting_pid)) {
+        return NULL; // Process is not active
+    }
+
     // Find a free waiters slot
     int set = 0;
     for (int i=0; i<MAX_WAITERS; i++) {
-        if (process(pid)->waiters[i].pid == 0) {
-            process(pid)->waiters[i] = waiter;
+        if (process(waiting_pid)->waiters[i].pid == 0) {
+            process(waiting_pid)->waiters[i] = waiter;
             set = 1;
             break;
         }
