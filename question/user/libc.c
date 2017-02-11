@@ -45,6 +45,17 @@ void itoa( char* r, int x ) {
     return;
 }
 
+// Copy the int x to the end of the string s
+char* ss(char* b, int x) {
+    b[0] = '\0';
+    if (x == 0) { // Little hack beacuse itoa dosen't like 0
+        b = "0";
+    } else {
+        itoa(b, x);
+    }
+    return b;
+}
+
 void yield() {
     asm volatile( "svc %0     \n" // make system call SYS_YIELD
     :
@@ -235,7 +246,7 @@ int waitp(int pid) {
 void sleep(int t) {
     // TODO use sleeping flag on process
     int x = 0;
-    for (int i=0; i<1000*t; i++) {
+    for (int i=0; i<100000*t; i++) {
         x++;
     }
     return;

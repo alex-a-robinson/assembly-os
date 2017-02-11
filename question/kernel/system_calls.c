@@ -52,8 +52,6 @@ void sys_fork(ctx_t* ctx) {
         return;
     }
 
-    // NOTE: Could implement wait system call which waits for child process to complete
-
     // Copy the process
     pcb_t* p = new_process(pid, current->pid);
     memcpy(&p->ctx, ctx, sizeof(ctx_t));
@@ -63,7 +61,7 @@ void sys_fork(ctx_t* ctx) {
     p->ctx.gpr[0] = (uint32_t)0;
 
     // Switch to the new process
-    set_current(ctx, pid);
+    //set_current(ctx, pid); Not needed
 
     return;
 }
