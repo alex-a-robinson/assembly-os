@@ -37,6 +37,7 @@
 #define SYS_LOCK      ( 0x10 )
 #define SYS_UNLOCK    ( 0x11 )
 #define SYS_WAIT      ( 0x12 )
+#define SYS_FORKWAIT  ( 0x13 )
 
 #define SIG_TERM      ( 0x00 )
 #define SIG_QUIT      ( 0x01 )
@@ -64,6 +65,7 @@ int sys_unshare(ctx_t* ctx, void* ptr);
 int sys_lock(ctx_t* ctx, void* ptr);
 int sys_unlock(ctx_t* ctx, void* ptr);
 
-int sys_wait(ctx_t* ctx, pid_t pid);
+int sys_wait(ctx_t* ctx, pid_t pid, pid_t wait_for_pid);
+void sys_fork_wait(ctx_t *ctx);
 
 #endif

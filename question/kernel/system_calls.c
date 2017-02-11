@@ -66,6 +66,13 @@ void sys_fork(ctx_t* ctx) {
     return;
 }
 
+void sys_fork_wait(ctx_t *ctx) {
+    pid_t previous_current_pid = current->pid;
+    sys_fork(ctx);
+    sys_wait(ctx, previous_current_pid, current->pid);
+    return;
+}
+
 void sys_exit(ctx_t* ctx, int x) {
     // Reset ctx (scheduler will update current with this) and run scheduler
     update_waiters(current->pid, x);
@@ -231,13 +238,13 @@ int sys_unlock(ctx_t* ctx, void* ptr) {
     return unlocked;
 }
 
-int sys_wait(ctx_t* ctx, pid_t pid) {
+int sys_wait(ctx_t* ctx, pid_t pid, pid_t wait_for_pid) {
     // use the waitings lists and waiter lists
-    waiting_t* waiting = get_waiting(current->pid, pid);
+    waiting_t* waiting = get_waiting(pid, wait_for_pid);
 
     // If not currently waiting for pid, start!
     if (waiting == NULL) {
-        waiting = set_waiting(current->pid, pid);
+        waiting = set_waiting(pid, wait_for_pid);
         if (waiting == NULL) {
             error("Couldn't set waiting\n");
             return -2;

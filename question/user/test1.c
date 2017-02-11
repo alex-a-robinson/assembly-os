@@ -3,20 +3,25 @@
 int number[1];
 
 void forked(int n) {
-    err("Starting Forked\n");
-    sleep(2);
+    puts("Starting Forked\n");
 
-    err("Waiting for lock\n");
-    lockm(number);
-    if (number[0] == 1) {
-        err("Setting to 2\n");
-        number[0] = 2;
-    } else {
-        err("Waiting until 1\n");
+    char b[1024];
+    while (1) {
+        sleep(1);
+        puts("Waiting for lock\n");
+        lockm(number);
+        puts(ss(b, number[0]));
+        if (number[0] == 1) {
+            puts("Setting to 2\n");
+            number[0] = 2;
+            exit(EXIT_SUCCESS);
+        } else {
+            puts("Waiting until 1\n");
+        }
+        unlockm(number);
     }
-    unlockm(number);
 
-    exit( EXIT_SUCCESS );
+    exit( EXIT_FAILURE );
 }
 
 void main_TEST1() {
@@ -32,15 +37,15 @@ void main_TEST1() {
         return;
     }
 
-    sleep(5);
-
     err("Waiting for lock-\n");
     lockm(number);
     err("Setting to 1\n");
     number[0] = 1;
     unlockm(number);
+    err("Unlocked-\n");
 
     waitp(pid);
+    err("Unshared-\n");
     unsharem(number);
 
     char b[1024];

@@ -37,6 +37,7 @@ typedef int pid_t;
 #define SYS_LOCK      ( 0x10 )
 #define SYS_UNLOCK    ( 0x11 )
 #define SYS_WAIT      ( 0x12 )
+#define SYS_FORKWAIT  ( 0x13 )
 
 #define SIG_TERM      ( 0x00 )
 #define SIG_QUIT      ( 0x01 )
@@ -60,6 +61,7 @@ extern void yield();
 // write n bytes from x to   the file descriptor fd; return bytes written
 extern int write( int fd, const void* x, size_t n );
 void err(char* msg);
+void puts(char* msg);
 
 // read  n bytes into x from the file descriptor fd; return bytes read
 extern int  read( int fd,       void* x, size_t n );
@@ -83,5 +85,6 @@ extern int unlockm(void* ptr);
 void sleep(int t);
 
 int waitp(int pid);
+int waitpnb(int pid);
 
 #endif

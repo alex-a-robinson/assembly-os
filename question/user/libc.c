@@ -84,6 +84,10 @@ void err(char* msg) {
     write(STDERR_FILENO, msg, strlen(msg));
 }
 
+void puts(char* msg) {
+    write(STDOUT_FILENO, msg, strlen(msg));
+}
+
 int  read( int fd,       void* x, size_t n ) {
     int r;
 
@@ -106,6 +110,18 @@ int fork() {
     "mov %0, r0 \n" // assign r  = r0
     : "=r" (r)
     : "I" (SYS_FORK)
+    : "r0" );
+
+    return r;
+}
+
+int fork_wait() {
+    int r;
+
+    asm volatile("svc %1     \n" // make system call SYS_FORKWAIT
+    "mov %0, r0 \n" // assign r  = r0
+    : "=r" (r)
+    : "I" (SYS_FORKWAIT)
     : "r0" );
 
     return r;
@@ -229,10 +245,15 @@ int _waitp(int pid) {
     return r;
 }
 
+// Wait non blocking to put in a wait request Note -1 is still waiting, -2 is error, other is exit status
+int waitpnb(int pid) {
+    return _waitp(pid);
+}
+
 int waitp(int pid) {
     int result = _waitp(pid);
     while (result == -1) { // -1 shows still waiting
-        err("W");
+        err("W"); // TODO remove
         yield();
         result = _waitp(pid);
     }

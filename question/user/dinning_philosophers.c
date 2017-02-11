@@ -14,20 +14,21 @@ int forks[PHILOSOPHERS];
 void philosopher(int id) {
     int eaten = 0;
     char b[1024];
-    err("Spawned="); err(ss(b,id)); err(" ");
+    puts(ss(b,id));puts("] Spawned\n");
     int take_fork_off_id = (id+1) % PHILOSOPHERS; // right handed
     //while (!eaten) {
     for (int i=0; i<5;i++) { // TODO remove
         sleep(1); // Thinking
+
         if (lockm(forks) == -1) {
             exit(EXIT_FAILURE); // Error locking
         }
 
-        err(ss(b,id));err(":Locked, Fork="); err(ss(b, forks[take_fork_off_id])); err("\n");
+        puts(ss(b,id));puts("] Locked, Fork="); puts(ss(b, forks[take_fork_off_id])); puts("\n");
         if (forks[take_fork_off_id] == 1) { // If there is a fork
-            err("philosopher eaten!\n");
+            puts(ss(b,id));puts("] Eaten!\n");
             forks[take_fork_off_id] = 0;
-            forks[id] = 1;
+            forks[id] = 1; // LOGIC?
             sleep(1); // Eating
             eaten = 1;
         }
@@ -43,9 +44,9 @@ void main_dp() {
 
     err("Iniated forks\n");
     // Init array (all to 1 except 1)
-    for (int i=0; i<PHILOSOPHERS-1; i++) {
-        forks[i] = 1;
-    }
+    // for (int i=0; i<PHILOSOPHERS-1; i++) {
+    //     forks[i] = 1;
+    // }
 
     // Share forks memeory
     sharem(forks);
@@ -57,16 +58,24 @@ void main_dp() {
     for (int i=0; i<PHILOSOPHERS; i++) {
         pid_t pid = fork();
         if (0 == pid) {
-            //exec(&philosopher); // TODO pass id?
-            philosopher(i); // TODO will this work?, NOTE exits
+            philosopher(i);
             return;
         } else {
             philosopher_pids[i] = pid;
         }
     }
 
-    //lockm(forks);
-    //unlockm(forks);
+    // Init array (all to 1 except last)
+    lockm(forks);
+    for (int i=0; i<PHILOSOPHERS; i++) { // TODO should be PHILOSOPHERS-1
+        forks[i] = 1;
+    }
+    unlockm(forks);
+
+    // Put non blocking wait requests in
+    for (int i=0; i<PHILOSOPHERS; i++) {
+        waitpnb(philosopher_pids[i]);
+    }
 
     err("Waiting for responses\n");
 
@@ -75,11 +84,7 @@ void main_dp() {
     int result = 0;
     for (int i=0; i<PHILOSOPHERS; i++) {
         err("Waiting for: "); err(ss(b, philosopher_pids[i])); err("\n");
-        ps(philosopher_pids[i]);
-        // TODO wait_p will wait for the first to complete but not put waiting locks on any of the others until this happens meaning it only waits for the first
         int r = waitp(philosopher_pids[i]);
-        err(ss(b, r));
-        result = result && r;
     }
 
     unsharem(forks);
