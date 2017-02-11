@@ -11,8 +11,7 @@ extern uint32_t tos_P4;
 extern uint32_t tos_P5;
 extern uint32_t tos_P6;
 // TODO dynamically by adding to pointers
-uint32_t sps[] = {(uint32_t)(&tos_P1), (uint32_t)(&tos_P2), (uint32_t)(&tos_P3),
-                  (uint32_t)(&tos_P4), (uint32_t)(&tos_P5), (uint32_t)(&tos_P6)};
+uint32_t sps[] = {(uint32_t)(&tos_P1), (uint32_t)(&tos_P2), (uint32_t)(&tos_P3), (uint32_t)(&tos_P4), (uint32_t)(&tos_P5), (uint32_t)(&tos_P6)};
 
 // Return process
 pcb_t* process(pid_t pid) {
@@ -166,4 +165,58 @@ int unlock(pid_t pid, void* ptr) {
     } else {
         return 0;
     }
+}
+
+waiting_t* get_waiting(pid_t pid, pid_t waiting_pid) {
+    for (int i=0; i<MAX_WAITING; i++) {
+        if (process(pid)->waiting[i].pid == waiting_pid) {
+            return &process(pid)->waiting[i];
+        }
+    }
+    return NULL;
+}
+
+// Update all processes waiting for the process of pid to finish
+void update_waiters(pid_t pid, int result) {
+    for (int i=0; i<MAX_WAITERS; i++) {
+        if (process(pid)->waiters[i].pid != 0) {
+            get_waiting(process(pid)->waiters[i].pid, pid)->result = result;
+            process(pid)->waiters[i].pid = 0; // clear self
+        }
+    }
+}
+
+waiting_t* set_waiting(pid_t pid, pid_t waiting_pid) {
+    // Set up the waiting & waiter objects
+    waiting_t waiting;
+    waiting.pid = waiting_pid;
+    waiting.result = -1;
+
+    waiter_t waiter;
+    waiter.pid = pid;
+
+    // Find a free waiters slot
+    int set = 0;
+    for (int i=0; i<MAX_WAITERS; i++) {
+        if (process(pid)->waiters[i].pid == 0) {
+            process(pid)->waiters[i] = waiter;
+            set = 1;
+            break;
+        }
+    }
+
+    // Check for errors
+    if (!set) {
+        return NULL; // Error, max waiting
+    }
+
+    // Find a free waiting slot
+    for (int i=0; i<MAX_WAITING; i++) {
+        if (process(pid)->waiting[i].pid == 0) {
+            process(pid)->waiting[i] = waiting;
+            return &process(pid)->waiting[i];
+        }
+    }
+
+    return NULL;
 }

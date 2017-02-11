@@ -49,7 +49,8 @@ void main_dp() {
     for (int i=0; i<PHILOSOPHERS; i++) {
         pid_t pid = fork();
         if (0 == pid) {
-            exec(&philosopher); // TODO pass id?
+            //exec(&philosopher); // TODO pass id?
+            philosopher(); // TODO will this work?, NOTE exits
         } else {
             philosopher_pids[i] = pid;
         }
@@ -58,11 +59,13 @@ void main_dp() {
     err("Waiting for responses\n");
 
     // Wait until they are all complete
+    // TODO What if processes finish before get waiting lock on them?
+    int result = 0;
     for (int i=0; i<PHILOSOPHERS; i++) {
-        waitp(philosopher_pids[i]);
+        result = result && waitp(philosopher_pids[i]);
     }
 
-    err("Done!");
+    err("Done!\n");
 
-    exit(EXIT_SUCCESS);
+    exit(result);
 }

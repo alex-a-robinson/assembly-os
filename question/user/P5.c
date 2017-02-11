@@ -10,7 +10,19 @@ uint32_t weight( uint32_t x ) {
     return x;
 }
 
+extern void main_P3();
+
 void main_P5() {
+
+    err("Starting P3\n");
+    pid_t pid = fork();
+    if (0 == pid) {
+        exec(&main_P3);
+    }
+    err("Spawned P3\n");
+    int r = waitp(pid);
+    err("Returned with\n");
+
     while( 1 ) {
         write( STDOUT_FILENO, "P5", 2 );
 

@@ -69,16 +69,9 @@ void sys_fork(ctx_t* ctx) {
 }
 
 void sys_exit(ctx_t* ctx, int x) {
-    if (x == EXIT_SUCCESS) {
-        // TODO Exit success
-    } else if (x == EXIT_FAILURE) {
-        // TODO Exit failure
-    } else {
-        // TODO unkown status code x
-    }
-
     // Reset ctx (scheduler will update current with this) and run scheduler
     reset_ctx(ctx, current->pid);
+    update_waiters(current->pid, x);
     fix_orphaned_processes(current->pid);
     scheduler(ctx);
     return;
@@ -114,6 +107,7 @@ int sys_kill(ctx_t* ctx, pid_t pid, uint32_t sig) {
             // otherwise update processes ctx so when scheduler next run
             // it will be free
             fix_orphaned_processes(current->pid);
+            update_waiters(current->pid, EXIT_FAILURE);
             if (current->pid == pid) {
                 reset_ctx(ctx, pid);
                 scheduler(ctx);
@@ -162,6 +156,7 @@ void sys_exec(ctx_t* ctx, void* x) {
 }
 
 // Set child processes ppid to 0
+// NOTE memory locks, sleeping waters?
 void fix_orphaned_processes(pid_t ppid) {
     for (pid_t pid=1; pid <= MAX_PROCESSES; pid++) {
         if (process(pid)->ppid == ppid) {
@@ -234,20 +229,28 @@ int sys_unlock(ctx_t* ctx, void* ptr) {
 }
 
 int sys_wait(ctx_t* ctx, pid_t pid) {
-    // TODO
     if (!active_process(pid)) {
         error("Process is not active\n");
-        return -1;
+        return -2;
     }
 
-    waiting_t waiting = current->waiting;
-    if (waiting.pid == 0) { // If not already waiting, start
-        waiting.pid = pid;
-        waiting.result = -1;
-    } else if (waiting.pid == pid) { // If already waiting show result
-        return waiting.result;
+    // use the waitings lists and waiter lists
+    waiting_t* waiting = get_waiting(current->pid, pid);
+
+    // If not currently waiting for pid, start!
+    if (waiting == NULL) {
+        waiting = set_waiting(current->pid, pid);
+        if (waiting == NULL) {
+            error("Couldn't set waiting\n");
+            return -2;
+        }
     }
-    // Waiting for another pid
-    error("Already waiting for another process\n");
-    return -2;
+
+    int result = waiting->result;
+    if (result != -1) { // If we have a result then reset
+        waiting->pid = 0;
+        waiting->result = -1;
+    }
+
+    return result;
 }
