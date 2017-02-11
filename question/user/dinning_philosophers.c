@@ -15,7 +15,7 @@ typedef struct {
     int state; // game state 0 init 1 going
 } arbitrator_t;
 
-arbitrator_t* arbitrator;
+arbitrator_t arbitrator[1];
 
 int get_id() {
     int id = -1;
@@ -60,32 +60,35 @@ void put_forks_back(int id, arbitrator_t* arbitrator, int left_fork, int right_f
 }
 
 void philosopher() {
-    int eat_count, think_count = 0;
+    int eat_count   = 0;
+    int think_count = 0;
     char b[1024];
+    err("Getting ID\n");
     int id = get_id();
 
     // Once all the IDs are given out, start
-    while (1) {
-        sleep(2);
-        lockm(arbitrator);
-        if (arbitrator->state) {
-            break;
-        }
-        unlockm(arbitrator);
-    }
+    // while (1) {
+    //     sleep(2);
+    //     lockm(arbitrator);
+    //     if (arbitrator->state) {
+    //         break;
+    //     }
+    //     unlockm(arbitrator);
+    // }
 
     puts("Hello from Philosopher #"); puts(ss(b,id));puts("!\n");
 
     for (int j=0; j<10; j++) { // 10 iterations
         think_count++;
-        sleep(2); // Thinking
+        sleep(1); // Thinking
 
         if (lockm(arbitrator) == -1) { // Failed to lock
             exit(EXIT_FAILURE);
         }
 
         int left_fork = get_left_fork(id, arbitrator);
-        int right_fork = get_left_fork(id, arbitrator);
+        int right_fork = get_right_fork(id, arbitrator);
+        puts("Philosopher #"); puts(ss(b,id));puts(" has "); puts(ss(b,left_fork));puts(" left fork(s) and "); puts(ss(b,right_fork));puts(" right fork(s)\n");
         if (left_fork && right_fork) {
             eat_count++;
             puts("Philosopher #"); puts(ss(b,id));puts(" thought "); puts(ss(b,think_count));puts(" times and eaten "); puts(ss(b,eat_count));puts(" times\n");
@@ -101,7 +104,8 @@ void philosopher() {
 void main_dp() {
     char b[1024];
 
-    err("Iniated forks\n");
+    err("Iniated the arbitrator\n");
+
     // Init forks and ids
     arbitrator->state = 0;
     for (int i=0; i<PHILOSOPHERS; i++) {
