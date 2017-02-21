@@ -253,7 +253,6 @@ int waitpnb(int pid) {
 int waitp(int pid) {
     int result = _waitp(pid);
     while (result == -1) { // -1 shows still waiting
-        err("W"); // TODO remove
         yield();
         result = _waitp(pid);
     }
