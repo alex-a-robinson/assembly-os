@@ -5,16 +5,17 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 
-// TODO Should these be hard coded?
-#define DISK_BLOCK_NUM 65536
-#define DISK_BLOCK_LEN 16
+#include "disk.h"
+#include "bitmap.h"
 
 // Inode constatnts
 #define MAX_INODE_BLOCKS 6
 
 // Super Block constants
-#define NUM_OF_INODES ((int) (DISK_BLOCK_NUM) / (MAX_INODE_BLOCKS))
+#define MAX_NUMBER_OF_BLOCKS 65536
+#define BLOCK_BITMAP_SIZE ((int) (MAX_NUMBER_OF_BLOCKS) / (BITS_PER_WORD))
 
 // inode types
 #define INODE_UNALLOCATED 0
@@ -25,8 +26,9 @@ typedef struct {
     int disk_block_num;
     int disk_block_length;
     int inode_num;
-    void* inode_start;
-    void* data_block_start;
+    uint32_t inode_start;
+    uint32_t data_block_start;
+    uint32_t free_block_bitmap[BLOCK_BITMAP_SIZE];
 } superblock_t;
 
 typedef struct {
@@ -36,7 +38,7 @@ typedef struct {
     uint32_t blocks_allocated;
     uint32_t creation_time;
     uint32_t modification_time;
-    void* blocks[MAX_INODE_BLOCKS];
+    uint32_t blocks[MAX_INODE_BLOCKS];
 } inode_t;
 
 #endif
