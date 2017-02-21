@@ -75,10 +75,16 @@ void init_disk(superblock_t* superblock) {
     return status;
 }
 
+// Create and write empty inodes, returns 0 for success, -1 for failure
 int write_inodes(superblock_t* superblock) {
     for (int i=0; i<superblock->inode_num; i++) {
-
+        inode_t* inode;
+        new_inode(i, inode);
+        if (write_inode(superblock, inode) < 0) {
+            return -1;
+        }
     }
+    return 0;
 }
 
 // Create an empty inode
@@ -103,16 +109,6 @@ int write_inode(superblock_t* superblock, inode_t* inode) {
     return disk_wr(addr, inode, sizeof(inode_t));
 }
 
-void unallocate_inode(superblock_t* superblock, inode_t* inode) {
-    // Unallocate data blocks
-    for (int i=0; i<inode->blocks_allocated; i++) {
-        unallocate_block(superblock, inode->blocks[i]);
-    }
-    int id = inode->id;
-    new_inode(id, inode);
-    return;
-}
-
 // Mark datablock as allocated
 void allocate_block(superblock_t* superblock, unit32_t addr) {
     set_bit(superblock->free_block_bitmap, addr);
@@ -125,11 +121,40 @@ void unallocate_block(superblock_t* superblock, unit32_t addr) {
 
 // Returns next free block number or 0 if none
 uint32_t free_data_block(superblock_t* superblock) {
-    // Find 0 in superblock->free_block_bitmap, translate to data block pointer
     for (uint32_t addr=superblock->data_block_start; addr<superblock->disk_block_num; addr++) {
-        if (get_bit(superblock->free_block_bitmap) == 0) {
+        if (get_bit(superblock->free_block_bitmap, addr) == 0) {
             return addr;
         }
     }
     return 0;
+}
+
+// Mark inode as allocated
+void allocate_inode(superblock_t* superblock, inode_t* inode) {
+    // Mark allocated in superblock
+    set_bit(superblock->free_inode_bitmap, inode->id);
+}
+
+// Unallocate an inode & its associated data blocks
+void unallocate_inode(superblock_t* superblock, inode_t* inode) {
+    // Unallocate data blocks
+    for (int i=0; i<inode->blocks_allocated; i++) {
+        unallocate_block(superblock, inode->blocks[i]);
+    }
+
+    // Mark unallocated in superblock inode bitmap
+    clear_bit(superblock->free_inode_bitmap, inode->id);
+
+    // Reset inode
+    new_inode(inode->id, inode);
+}
+
+// Find the next free inode
+int free_inode(superblock_t* superblock, inode_t* inode) {
+    for (uint32_t id=0; id<superblock->inode_num; id++) {
+        if (get_bit(superblock->free_inode_bitmap, id) == 0) {
+            return read_inode(superblock, id, inode);
+        }
+    }
+    return -1;
 }

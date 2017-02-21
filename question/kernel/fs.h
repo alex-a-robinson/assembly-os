@@ -15,7 +15,10 @@
 
 // Super Block constants
 #define MAX_NUMBER_OF_BLOCKS 65536
-#define BLOCK_BITMAP_SIZE ((int) (MAX_NUMBER_OF_BLOCKS) / (BITS_PER_WORD))
+#define MIN_BLOCK_LENGTH 16
+#define MAX_BLOCK_BITMAP_SIZE ((int) (MAX_NUMBER_OF_BLOCKS) / (BITS_PER_WORD))
+#define MAX_NUMBER_OF_INODES ((int) (MAX_NUMBER_OF_BLOCKS) / (MIN_BLOCK_LENGTH))
+#define MAX_INODE_BITMAP_SIZE ((int) (MAX_NUMBER_OF_INODES) / (BITS_PER_WORD))
 
 // inode types
 #define INODE_UNALLOCATED 0
@@ -28,7 +31,8 @@ typedef struct {
     int inode_num;
     uint32_t inode_start;
     uint32_t data_block_start;
-    uint32_t free_block_bitmap[BLOCK_BITMAP_SIZE];
+    uint32_t free_block_bitmap[MAX_BLOCK_BITMAP_SIZE];
+    uint32_t free_inode_bitmap[MAX_INODE_BITMAP_SIZE];
 } superblock_t;
 
 typedef struct {
