@@ -12,6 +12,9 @@ TODO:
   - Read and write a byte at a time with inodes
 */
 
+// NOTE simplification, this would be a mount table
+superblock_t* mounted = NULL;
+
 // Returns ceil of number of blocks bytes bytes occupies
 uint32_t blocks_occupied(int block_size, int bytes) {
     return (block_size + bytes - 1) / block_size;
@@ -147,3 +150,18 @@ int free_inode(superblock_t* superblock, inode_t* inode) {
     }
     return -1;
 }
+
+// This should be done with file handlers instead...
+// int read_from_inode(inode_t* inode) {
+//     uint_t data_size = inode->size;
+//     uint8_t* data = malloc(sizeof(data_size));
+//
+//     for (int i=0; i < inode->blocks_allocated; i++) {
+//         // Retrive bytes from the block,
+//         if (disk_rd(inode->blocks[i], data, data_size % superblock->disk_block_length) < 0) {
+//             return -1;
+//         }
+//         data_size -= superblock->disk_block_length; // Decrease number of blocks we're retriving for each block
+//     }
+//     return 0;
+// }

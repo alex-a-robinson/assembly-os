@@ -6,6 +6,7 @@
 #include "processes.h"
 #include "utilities.h"
 #include "scheduler.h"
+#include "fs.h"
 
 #include <string.h>
 
