@@ -119,26 +119,6 @@ uint32_t free_data_block(superblock_t* superblock) {
     return 0;
 }
 
-// Mark inode as allocated
-void allocate_inode(superblock_t* superblock, inode_t* inode) {
-    // Mark allocated in superblock
-    set_bit(superblock->free_inode_bitmap, inode->id);
-}
-
-// Unallocate an inode & its associated data blocks
-void unallocate_inode(superblock_t* superblock, inode_t* inode) {
-    // Unallocate data blocks
-    for (int i=0; i<inode->blocks_allocated; i++) {
-        unallocate_block(superblock, inode->blocks[i]);
-    }
-
-    // Mark unallocated in superblock inode bitmap
-    clear_bit(superblock->free_inode_bitmap, inode->id);
-
-    // Reset inode
-    new_inode(inode->id, inode);
-}
-
 // Find the next free inode
 int free_inode(superblock_t* superblock, inode_t* inode) {
     for (uint32_t id=0; id<superblock->inode_num; id++) {
@@ -149,14 +129,33 @@ int free_inode(superblock_t* superblock, inode_t* inode) {
     return -1;
 }
 
-int create_file(superblock_t* superblock, inode_t* inode) {
+int create_inode_type(superblock_t* superblock, inode_t* inode, int inode_type) {
     inode_t* inode;
     int status = free_inode(superblock, inode);
-    allocate_inode(superblock, inode);
-    inode->type = INODE_FILE;
+
+    // Mark allocated in superblock
+    set_bit(superblock->free_inode_bitmap, inode->id);
+
+    inode->type = inode_type;
     inode->creation_time = 1; // TODO
     status |= write_inode(superblock, inode);
+
     return status;
+}
+
+// Unallocate an inode & its associated data blocks
+void delete_inode(superblock_t* superblock, inode_t* inode) {
+    // Unallocate data blocks
+    for (int i=0; i<inode->blocks_allocated; i++) {
+        unallocate_block(superblock, inode->blocks[i]);
+    }
+
+    // Mark unallocated in superblock inode bitmap
+    clear_bit(superblock->free_inode_bitmap, inode->id);
+
+    // Reset inode
+    new_inode(inode->id, inode);
+    return write_inode(superblock, inode);
 }
 
 // This should be done with file handlers instead...
