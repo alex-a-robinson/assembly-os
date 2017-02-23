@@ -57,7 +57,10 @@ int sys_open(ctx_t* ctx, char* path, int flags) {
         return -1;
     }
 
-    // TODO put in processes open_files
+    // Add from process open files table & check for an error
+    if (add_fd(current->pid, fd) < 0) {
+        return -1;
+    }
 
     return fd;
 }
@@ -71,7 +74,6 @@ int sys_close(ctx_t* ctx, int fd) {
         return -1;
     }
 
-    // TODO remove processes open_files
-
-    return 0;
+    // Remove from process open files table
+    return remove_fd(current->pid, fd);
 }

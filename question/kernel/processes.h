@@ -16,6 +16,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "fs.h"
+
 // Max number of processes
 #define MAX_PROCESSES 6
 #define MAX_WAITING 20 // Allow waiting for 20 processes
@@ -49,6 +51,11 @@ typedef struct {
   pid_t pid;
 } waiter_t;
 
+typedef struct {
+  int count;
+  int open[MAX_OPEN_FILES]
+} fd_proc_table_t
+
 // TODO add pending signals
 // TODO add child exit code
 // TODO process groups? pgid
@@ -60,6 +67,7 @@ typedef struct {
   shared_t shared;
   waiting_t waiting[MAX_WAITING];
   waiter_t waiters[MAX_WAITERS];
+  fd_proc_table_t fd_table;
 } pcb_t;
 
 pcb_t* process(pid_t pid);

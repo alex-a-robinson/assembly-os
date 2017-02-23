@@ -224,3 +224,45 @@ waiting_t* set_waiting(pid_t pid, pid_t waiting_pid) {
 
     return NULL;
 }
+
+// Add a file descriptor from a processes open file table
+int add_fd(pid_t pid, int fd) {
+    file_descriptor_table_t* fdtable;
+    fdtable = proccess(pid)->fd_table;
+
+    // Check we can open another file
+    if (fdtable->count >= MAX_OPEN_FILES) {
+        return -1;
+    }
+
+    fdtable->open[fdtable->count] = fd;
+    fdtable->count++;
+    return 0;
+}
+
+// Removes a file descriptor from a processes open file table
+int remove_fd(pid_t pid, int fd) {
+    file_descriptor_table_t* fdtable;
+    fdtable = proccess(pid)->fd_table;
+
+    int index = -1;
+    for (int i=0; i < fdtable->count; i++) {
+        if (fdtable->open[i] == fd) {
+            index = i;
+            break;
+        }
+    }
+
+    // File not open
+    if (index == -1) {
+        return -1;
+    }
+
+    // Update number of open files
+    fdtable->count--;
+
+    // Shift array left one, therefore deleting the file descriptor
+    memmove(&fdtable->open[index+1], &fdtable->open[index], (fdtable->count-index) * sizeof(int));
+
+    return 0;
+}
