@@ -12,8 +12,6 @@ TODO:
   - Read and write a byte at a time with inodes
 */
 
-// NOTE simplification, this would be a mount table
-superblock_t* mounted = NULL;
 
 // Returns ceil of number of blocks bytes bytes occupies
 uint32_t blocks_occupied(int block_size, int bytes) {
@@ -62,13 +60,13 @@ void init_disk(superblock_t* superblock) {
     int status = 0;
     new_superblock(superblock);
     status |= write_superblock(superblock);
-    status |= write_inodes(superblock);
+    status |= init_inodes(superblock);
     status |= write_root_files(superblock);
     return status;
 }
 
 // Create and write empty inodes, returns 0 for success, -1 for failure
-int write_inodes(superblock_t* superblock) {
+int init_inodes(superblock_t* superblock) {
     for (int i=0; i<superblock->inode_num; i++) {
         inode_t* inode;
         new_inode(i, inode);
@@ -149,6 +147,16 @@ int free_inode(superblock_t* superblock, inode_t* inode) {
         }
     }
     return -1;
+}
+
+int create_file(superblock_t* superblock, inode_t* inode) {
+    inode_t* inode;
+    int status = free_inode(superblock, inode);
+    allocate_inode(superblock, inode);
+    inode->type = INODE_FILE;
+    inode->creation_time = 1; // TODO
+    status |= write_inode(superblock, inode);
+    return status;
 }
 
 // This should be done with file handlers instead...

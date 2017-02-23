@@ -2,6 +2,9 @@
 
 extern pcb_t* current;
 
+// NOTE simplification, this would be a mount table
+superblock_t* mounted = NULL;
+
 int sys_write(int fd, char* x, int n) {
     // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
 
@@ -269,8 +272,7 @@ int sys_mount() {
         return 1;
     }
 
-    int status = 0;
-    status |= read_superblock(mounted);
+    int status = read_superblock(mounted);
     if (!valid_superblock(mounted)) {
         status |= init_disk(mounted);
     }
