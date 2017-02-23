@@ -25,6 +25,11 @@
 #define INODE_FILE 1
 #define INODE_DIRECTORY 2
 
+// directory constants
+#define MAX_FILE_NAME_LENGTH 100
+#define MAX_FILES_IN_DIRECTORY 10
+
+
 typedef struct {
     int disk_block_num;
     int disk_block_length;
@@ -32,7 +37,7 @@ typedef struct {
     uint32_t inode_start;
     uint32_t data_block_start;
     uint32_t free_block_bitmap[MAX_BLOCK_BITMAP_SIZE];
-    uint32_t free_inode_bitmap[MAX_INODE_BITMAP_SIZE];
+    uint32_t free_inode_bitmap[MAX_INODE_BITMAP_SIZE]; // inode table?
 } superblock_t;
 
 typedef struct {
@@ -44,5 +49,15 @@ typedef struct {
     uint32_t modification_time;
     uint32_t blocks[MAX_INODE_BLOCKS];
 } inode_t;
+
+typedef struct {
+    int inode_id;
+    char filename[MAX_FILE_NAME_LENGTH];
+} file_link_t;
+
+typedef struct {
+    int files_count;
+    file_link_t links[MAX_FILES_IN_DIRECTORY];
+} directory_t;
 
 #endif

@@ -61,7 +61,7 @@ void init_disk(superblock_t* superblock) {
     new_superblock(superblock);
     status |= write_superblock(superblock);
     status |= init_inodes(superblock);
-    status |= write_root_files(superblock);
+    status |= write_root_files(superblock); // TODO
     return status;
 }
 
@@ -84,9 +84,13 @@ void new_inode(int id, inode_t* inode) {
     return;
 }
 
+uint32_t id_to_addr(uperblock_t* superblock, int id) {
+    return superblock->inode_start + id * blocks_occupied(superblock->disk_block_length, sizeof(inode_t));
+}
+
 // Read inode by inode id
 int read_inode(superblock_t* superblock, int id, inode_t* inode) {
-    uint32_t addr = superblock->inode_start + id * blocks_occupied(superblock->disk_block_length, sizeof(inode_t));
+    uint32_t addr = id_to_addr(superblock, id);
     return disk_rd(addr, inode, sizeof(inode_t))
 }
 
@@ -94,8 +98,7 @@ int read_inode(superblock_t* superblock, int id, inode_t* inode) {
 // NOTE Currently giving one block to each inode
 // Write inode
 int write_inode(superblock_t* superblock, inode_t* inode) {
-    int id = inode->id;
-    uint32_t addr = superblock->inode_start + id * blocks_occupied(superblock->disk_block_length, sizeof(inode_t));
+    uint32_t addr = id_to_addr(superblock, inode->id);
     return disk_wr(addr, inode, sizeof(inode_t));
 }
 
@@ -130,7 +133,6 @@ int free_inode(superblock_t* superblock, inode_t* inode) {
 }
 
 int create_inode_type(superblock_t* superblock, inode_t* inode, int inode_type) {
-    inode_t* inode;
     int status = free_inode(superblock, inode);
 
     // Mark allocated in superblock
@@ -144,7 +146,7 @@ int create_inode_type(superblock_t* superblock, inode_t* inode, int inode_type) 
 }
 
 // Unallocate an inode & its associated data blocks
-void delete_inode(superblock_t* superblock, inode_t* inode) {
+int delete_inode(superblock_t* superblock, inode_t* inode) {
     // Unallocate data blocks
     for (int i=0; i<inode->blocks_allocated; i++) {
         unallocate_block(superblock, inode->blocks[i]);
@@ -158,17 +160,211 @@ void delete_inode(superblock_t* superblock, inode_t* inode) {
     return write_inode(superblock, inode);
 }
 
-// This should be done with file handlers instead...
-// int read_from_inode(inode_t* inode) {
-//     uint_t data_size = inode->size;
-//     uint8_t* data = malloc(sizeof(data_size));
-//
-//     for (int i=0; i < inode->blocks_allocated; i++) {
-//         // Retrive bytes from the block,
-//         if (disk_rd(inode->blocks[i], data, data_size % superblock->disk_block_length) < 0) {
-//             return -1;
-//         }
-//         data_size -= superblock->disk_block_length; // Decrease number of blocks we're retriving for each block
-//     }
-//     return 0;
-// }
+// Write a directory to its inode
+int write_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
+    uint32_t file_pointer = 0;
+    return write_to_inode(superblock, inode, &file_pointer, dir, sizeof(directory_t));
+}
+
+// Create a directory
+int create_directory(superblock_t* superblock, inode_t* parent_dir_inode) {
+    inode_t* dir_inode;
+    int status = create_inode_type(superblock, dir_inode, INODE_DIRECTORY);
+
+    file_link_t* current_dir;
+    file_link->inode_id = dir_inode->id;
+    file_link->filename = ".";
+
+    file_link_t* parent_dir;
+    file_link->inode_id = parent_dir_inode->id;
+    file_link->filename = "..";
+
+    directory_t* dir;
+    dir->links[0] = current_dir;
+    dir->links[1] = parent_dir;
+    dir->file_count = 2;
+
+    uint32_t file_pointer = 0;
+    return write_dir(superblock, dir_inode, dir);
+}
+
+// TODO create & delete file which updates the directory, maintain dir->file_count, check unniqueness
+// TODO write root files, root global?
+
+// Deletes a file link from a directory
+int delete_file_link(directory_t* dir, char* filename) {
+    // Search directory
+    int index = -1;
+    for (int i=0; i<dir->file_count; i++) {
+        file_link_t* file_link = dir->links[i];
+        if (strcmp(filename, file_link->filename) == 0) { // Found match
+            index = i;
+            break;
+        }
+    }
+
+    // File not in directory
+    if (index == -1) {
+        return -1;
+    }
+
+    // Update number of files in the directory
+    dir->files_count--;
+
+    // Shift array left one, therefore deleting the file
+    memmove(&dir->links[index+1], &dir->links[index], (dir->files_count-index) * sizeof(file_link_t));
+    dir->links[index] = value;
+
+    return 0;
+}
+
+// Delete a file
+int delete_file(superblock_t* superblock, inode_t* dir_inode, char* filename) {
+    // Retrive the directory
+    uint32_t file_pointer = 0;
+    directory_t* dir;
+    if (read_from_inode(superblock, dir_inode, &file_pointer, dir, sizeof(directory_t)) < 0) {
+        return -1;
+    }
+
+    int inode_id = directory_lookup(superblock, dir_inode, filename);
+
+    // Check we found the inode
+    if (inode_id < 0) {
+        return -1;
+    }
+
+    // Read the inode, check for errors
+    inode_t* inode;
+    if (read_inode(superblock, inode_id, inode) < 0) {
+        return -1;
+    }
+
+    // Delete file link and check status
+    if (delete_file_link(dir, filename) < 0) {
+        return -1;
+    }
+
+    // Write the directory
+    if (write_dir(superblock, dir_inode, dir) < 0) {
+        return -1;
+    }
+
+    // Finally delete
+    return delete_inode(superblock, inode);
+}
+
+// Create a new file
+int create_file(superblock_t* superblock, inode_t* dir_inode, char* filename) {
+    // Create a new inode
+    inode_t* inode;
+    int status = create_inode_type(superblock, inode, INODE_FILE);
+
+    // Retrive the directory
+    uint32_t file_pointer = 0;
+    directory_t* dir;
+    if (read_from_inode(superblock, dir_inode, &file_pointer, dir, sizeof(directory_t)) < 0) {
+        return -1;
+    }
+
+    // Check we are not already using that filename
+    if (directory_lookup(superblock, dir, filename) < 0) {
+        return -1;
+    }
+
+    // Create a new link
+    file_link_t* file_link;
+    file_link->inode_id = inode->id;
+    file_link->filename = filename;
+
+    // Update the directory
+    dir->links[dir->files_count] = file_link;
+    dir->files_count++;
+    return write_dir(superblock, dir_inode, dir);
+}
+
+// Returns inode id of filename if exists in the directory
+int directory_lookup(superblock_t* superblock, inode_t* dir_inode, char* filename) {
+    // Read the directory
+    uint32_t file_pointer = 0;
+    directory_t* dir;
+    if (read_from_inode(superblock, dir_inode, &file_pointer, dir, sizeof(directory_t)) < 0) {
+        return -1;
+    }
+
+    // Search files
+    for (int i=0; i<dir->file_count; i++) {
+        file_link_t* file_link = dir->links[i];
+        if (strcmp(filename, file_link->filename) == 0) { // Found match
+            return file_link->inode_id;
+        }
+    }
+
+    return -1;
+}
+
+// Read/Write <size> bytes from <bytes> from file_pointer, returns 0 on success
+int _ro_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, uint8_t* bytes, int data_size, int read) {
+    int bytes_left = data_size;
+    int block_id = (*file_pointer) / superblock->disk_block_length;
+    int offset   = (*file_pointer) % superblock->disk_block_length;
+
+    // Offset only the first address
+    unint32_t addr = inode->blocks[i] + offset;
+    int bytes_in_block = superblock->disk_block_length - offset;
+
+    // For each avalible block
+    for (int i=block_id+1; i<MAX_INODE_BLOCKS; i++) {
+        int bytes_to_read_or_writen;
+        if (bytes_left < bytes_in_block) { // If fits all in one block
+            bytes_to_read_or_writen = bytes_left;
+        } else { // Else read/write the entire block
+            bytes_to_read_or_writen = bytes_in_block;
+        }
+
+        int status;
+        if (read) {
+            status = disk_rd(addr, bytes, bytes_to_read_or_writen);
+        } else {
+            status = disk_wr(addr, bytes, bytes_to_read_or_writen);
+        }
+
+        // Check for failure
+        if (status < 0) {
+            return -1;
+        }
+
+        // Update how many bytes left & Move pointer
+        bytes_left -= bytes_to_read_or_writen;
+        bytes += bytes_to_read_or_writen;
+
+        // Check there is still data to read/write
+        if (bytes_left <= 0) {
+            break;
+        }
+
+        // Update for the next block to read/write to
+        addr = inode->blocks[i];
+        bytes_in_block = superblock->disk_block_length;
+    }
+
+    // Check all the data was read/written
+    if (bytes_to_read_or_writen > 0) {
+        return -1;
+    }
+
+    // Update the file pointer
+    (*file_pointer) += data_size;
+
+    return 0;
+}
+
+// Read from inode
+int read_from_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, uint8_t* bytes, int data_size) {
+    return _ro_inode(superblock, inode, file_pointer, bytes, data_size, 1);
+}
+
+// Write to inode
+int write_to_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, uint8_t* bytes, int data_size) {
+    return _ro_inode(superblock, inode, file_pointer, bytes, data_size, 0);
+}
