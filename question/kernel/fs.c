@@ -166,6 +166,12 @@ int write_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
     return write_to_inode(superblock, inode, &file_pointer, dir, sizeof(directory_t));
 }
 
+// Read a directory to its inode
+int read_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
+    uint32_t file_pointer = 0;
+    return read_from_inode(superblock, inode, &file_pointer, dir, sizeof(directory_t));
+}
+
 // Create a directory
 int create_directory(superblock_t* superblock, inode_t* parent_dir_inode) {
     inode_t* dir_inode;
@@ -188,7 +194,6 @@ int create_directory(superblock_t* superblock, inode_t* parent_dir_inode) {
     return write_dir(superblock, dir_inode, dir);
 }
 
-// TODO create & delete file which updates the directory, maintain dir->file_count, check unniqueness
 // TODO write root files, root global?
 
 // Deletes a file link from a directory
@@ -218,25 +223,32 @@ int delete_file_link(directory_t* dir, char* filename) {
     return 0;
 }
 
-// Delete a file
-int delete_file(superblock_t* superblock, inode_t* dir_inode, char* filename) {
+// Delete a directory, only if empty
+int delete_dir(superblock_t* superblock, inode_t* parent_dir_inode, char* filename) {
     // Retrive the directory
-    uint32_t file_pointer = 0;
     directory_t* dir;
-    if (read_from_inode(superblock, dir_inode, &file_pointer, dir, sizeof(directory_t)) < 0) {
+    filename_to_dir(superblock, iparent_dir_inode, filename, dir)
+
+    // If dir not empty, error
+    // NOTE can have "." and ".."
+    if (!dir->files_count <= 2) {
         return -1;
     }
 
-    int inode_id = directory_lookup(superblock, dir_inode, filename);
+    return delete_file(superblock, parent_dir_inode, filename);
+}
 
-    // Check we found the inode
-    if (inode_id < 0) {
+// Delete a file
+int delete_file(superblock_t* superblock, inode_t* dir_inode, char* filename) {
+    // Retrive the directory
+    directory_t* dir;
+    if (read_dir(superblock, dir_inode, dir,) < 0) {
         return -1;
     }
 
     // Read the inode, check for errors
     inode_t* inode;
-    if (read_inode(superblock, inode_id, inode) < 0) {
+    if (filename_to_inode(superblock, dir_inode, filename, inode) <0) {
         return -1;
     }
 
@@ -261,9 +273,8 @@ int create_file(superblock_t* superblock, inode_t* dir_inode, char* filename) {
     int status = create_inode_type(superblock, inode, INODE_FILE);
 
     // Retrive the directory
-    uint32_t file_pointer = 0;
     directory_t* dir;
-    if (read_from_inode(superblock, dir_inode, &file_pointer, dir, sizeof(directory_t)) < 0) {
+    if (read_dir(superblock, dir_inode, dir) < 0) {
         return -1;
     }
 
@@ -301,6 +312,38 @@ int directory_lookup(superblock_t* superblock, inode_t* dir_inode, char* filenam
     }
 
     return -1;
+}
+
+// Return a inode from a filename
+int filename_to_inode(superblock_t* superblock, inode_t* dir_inode, char* filename, inode_t* inode) {
+    int inode_id = directory_lookup(superblock, dir_inode, filename);
+
+    // Check we found the inode
+    if (inode_id < 0) {
+        return -1;
+    }
+
+    // Read the inode, check for errors
+    if (read_inode(superblock, inode_id, inode) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+// Return a directory from a filename
+int filename_to_dir(superblock_t* superblock, inode_t* parent_dir_inode, char* filename, directory_t* dir) {
+    inode_t* dir_inode;
+    if (filename_to_inode(superblock, parent_dir_inode, filename, dir_inode) < 0) {
+        return -1;
+    }
+
+    uint32_t file_pointer = 0;
+    if (read_from_inode(superblock, dir_inode, &file_pointer, dir, sizeof(directory_t)) < 0) {
+        return -1;
+    }
+
+    return 0;
 }
 
 // Read/Write <size> bytes from <bytes> from file_pointer, returns 0 on success
