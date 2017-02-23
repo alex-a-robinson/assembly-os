@@ -40,3 +40,5 @@ char* s(char* b, int x) {
     }
     return b;
 }
+
+// TODO make full path out of small path + root_dir

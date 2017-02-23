@@ -2,9 +2,6 @@
 
 extern pcb_t* current;
 
-// NOTE simplification, this would be a mount table
-superblock_t* mounted = NULL;
-
 int sys_write(int fd, char* x, int n) {
     // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
 
@@ -263,38 +260,4 @@ int sys_wait(ctx_t* ctx, pid_t pid, pid_t wait_for_pid) {
     waiting->result = -1;
 
     return result;
-}
-
-// Mount a disk, NOTE hard coded device. Returns 0 on success
-int sys_mount() {
-    if (mounted != NULL) {
-        error("Disk already mounted\n");
-        return 1;
-    }
-
-    int status = read_superblock(mounted);
-    if (!valid_superblock(mounted)) {
-        status |= init_disk(mounted);
-    }
-
-    if (status < 0) {
-        error("Error mounting disk\n");
-        return 1;
-    }
-    return 0;
-}
-
-// Unmount a disk, NOTE hard coded device. Returns 0 on success
-int sys_unmount() {
-    if (mounted == NULL) {
-        error("Disk not mounted\n");
-        return 1;
-    }
-
-    if (write_superblock(mounted) < 0) {
-        error("Failed to unmount disk\n");
-        return 1;
-    }
-    mounted = NULL;
-    return 0;
 }

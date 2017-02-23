@@ -56,12 +56,12 @@ void new_superblock(superblock_t* superblock) {
 }
 
 // Initiate the disk for the first time
-void init_disk(superblock_t* superblock) {
+void init_disk(superblock_t* superblock, directory_t* root_dir) {
     int status = 0;
     new_superblock(superblock);
     status |= write_superblock(superblock);
     status |= init_inodes(superblock);
-    status |= create_root_directory(superblock);
+    status |= create_root_directory(superblock, root_dir);
     return status;
 }
 
@@ -166,6 +166,15 @@ int write_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
     return write_to_inode(superblock, inode, &file_pointer, dir, sizeof(directory_t));
 }
 
+// Read the root dir
+int read_root_dir(superblock_t* superblock, directory_t* dir) {
+    inode_t* inode;
+    if (read_inode(superblock, 0, inode) < 0) { // NOTE Inode ID 0 is root dir
+        return -1;
+    }
+    return read_dir(superblock, inode, dir);
+}
+
 // Read a directory to its inode
 int read_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
     uint32_t file_pointer = 0;
@@ -197,7 +206,7 @@ int create_directory(superblock_t* superblock, inode_t* parent_dir_inode) {
 }
 
 // Create root directory, "." and ".." point to the same location
-int create_root_directory(superblock_t* superblock) {
+int create_root_directory(superblock_t* superblock, directory_t* root_dir) {
     inode_t* dir_inode;
     if (create_inode_type(superblock, dir_inode, INODE_DIRECTORY) < 0) {
         return -1;
@@ -211,16 +220,20 @@ int create_root_directory(superblock_t* superblock) {
     file_link->inode_id = dir_inode->id;
     file_link->filename = "..";
 
-    directory_t* dir;
-    dir->links[0] = current_dir;
-    dir->links[1] = parent_dir;
-    dir->file_count = 2;
+    directory_t* root_dir;
+    root_dir->links[0] = current_dir;
+    root_dir->links[1] = parent_dir;
+    root_dir->file_count = 2;
 
     uint32_t file_pointer = 0;
-    return write_dir(superblock, dir_inode, dir);
+    return write_dir(superblock, root_dir, dir);
 }
 
-// TODO write root files, root global?
+int dir_to_inode(superblock_t* superblock, directory_t* dir, inode_t* inode) {
+    int id = dir->links[0]->inode_id; // ID of "." entry in dir
+    return read_inode(superblock, id, inode);
+
+}
 
 // Deletes a file link from a directory
 int delete_file_link(directory_t* dir, char* filename) {
@@ -436,4 +449,108 @@ int read_from_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_poi
 // Write to inode
 int write_to_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, uint8_t* bytes, int data_size) {
     return _ro_inode(superblock, inode, file_pointer, bytes, data_size, 0);
+}
+
+////////////////////////////
+// File Descriptors
+///////////////////////////
+
+// Finds an inode from a path, return 0 on success
+int path_to_inode(superblock_t* superblock, directory_t* dir, inode_t* inode, char* path) {
+    inode_t* current_dir_inode;
+    inode_t* temp_inode;
+
+    // Load inode of current directory
+    if (dir_to_inode(superblock, dir, current_dir_inode) < 0) {
+        return -1;
+    }
+
+    // Split string on "/"
+    char* part;
+    part = strtok(path, "/");
+
+    // Until path is empty
+    while(part != NULL) {
+        if (filename_to_inode(superblock, current_dir_inode, part, temp_inode) < 0) {
+            return -1;
+        }
+
+        part = strtok(NULL, "/");
+
+        // If we get another directory, continue otherwise if its a file stop
+        if (temp_inode->type == INODE_DIRECTORY) {
+            current_dir = temp_inode;
+        } else if (temp_inode->type == INODE_FILE) {
+            if (part == NULL) {
+                inode = temp_inode;
+                return 0;
+            } else { // Found file however still path left, therefore error
+                return -1;
+            }
+        }
+    }
+
+    return -1;
+}
+
+// Returns file descriptor id
+int open_file(superblock_t* superblock, file_descriptor_table_t fdtable, directory_t* dir, char* path, int flags) {
+    // Check we can open more files
+    if (fdtable->count >= MAX_OPEN_FILES) {
+        return -1;
+    }
+
+    // Load the file
+    inode_t* inode;
+    path_to_inode(superblock, dir, inode, path);
+
+    // Check the file is not already open
+    for (int i=0; i < fdtable->count; i++) {
+        if (fdtable->open[i]->inode_id == inode->id) {
+            return -1;
+        }
+    }
+
+    // Create a new file descriptor
+    file_descriptor_t file_descriptor;
+    file_descriptor->id = fdtable->count;
+    file_descriptor->flags = flags;
+    file_descriptor->inode_id = inode->id;
+
+    // Add to table and update the count
+    fdtable->open[file_descriptor->id] = file_descriptor;
+    fdtable->count++;
+
+    return file_descriptor->id;
+}
+
+// Close a file TODO
+int close_file(superblock_t* superblock, file_descriptor_table_t fdtable, directory_t* dir, char* path, int flags) {
+    // Check we can open more files
+    if (fdtable->count >= MAX_OPEN_FILES) {
+        return -1;
+    }
+
+    // Load the file
+    inode_t* inode;
+    path_to_inode(superblock, dir, inode, path);
+
+    // Check the file is not already open
+    for (int i=0; i < fdtable->count; i++) {
+        if (fdtable->open[i]->inode_id == inode->id) {
+            return -1;
+        }
+    }
+
+    // Create a new file descriptor
+    file_descriptor_t file_descriptor;
+    file_descriptor->id = fdtable->count;
+    file_descriptor->flags = flags;
+    file_descriptor->inode_id = inode->id;
+
+    // Add to table and update the count
+    fdtable->open[file_descriptor->id] = file_descriptor;
+    fdtable->count++;
+
+    return file_descriptor->id;
 }

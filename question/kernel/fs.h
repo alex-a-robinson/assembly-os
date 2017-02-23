@@ -29,6 +29,12 @@
 #define MAX_FILE_NAME_LENGTH 100
 #define MAX_FILES_IN_DIRECTORY 10
 
+// File descriptors constants
+#define MAX_OPEN_FILES 10
+#define READ 0
+#define WRITE 1
+#define READ_WRITE 2
+
 
 typedef struct {
     int disk_block_num;
@@ -59,5 +65,16 @@ typedef struct {
     int files_count;
     file_link_t links[MAX_FILES_IN_DIRECTORY];
 } directory_t;
+
+typedef struct {
+    int id;
+    int flags;
+    int inode_id;
+} file_descriptor_t;
+
+typedef struct {
+    int count;
+    file_descriptor_t open[MAX_OPEN_FILES];
+} file_descriptor_table_t;
 
 #endif
