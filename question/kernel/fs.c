@@ -61,7 +61,7 @@ void init_disk(superblock_t* superblock) {
     new_superblock(superblock);
     status |= write_superblock(superblock);
     status |= init_inodes(superblock);
-    status |= write_root_files(superblock); // TODO
+    status |= create_root_directory(superblock);
     return status;
 }
 
@@ -175,7 +175,9 @@ int read_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
 // Create a directory
 int create_directory(superblock_t* superblock, inode_t* parent_dir_inode) {
     inode_t* dir_inode;
-    int status = create_inode_type(superblock, dir_inode, INODE_DIRECTORY);
+    if (create_inode_type(superblock, dir_inode, INODE_DIRECTORY) < 0) {
+        return -1;
+    }
 
     file_link_t* current_dir;
     file_link->inode_id = dir_inode->id;
@@ -183,6 +185,30 @@ int create_directory(superblock_t* superblock, inode_t* parent_dir_inode) {
 
     file_link_t* parent_dir;
     file_link->inode_id = parent_dir_inode->id;
+    file_link->filename = "..";
+
+    directory_t* dir;
+    dir->links[0] = current_dir;
+    dir->links[1] = parent_dir;
+    dir->file_count = 2;
+
+    uint32_t file_pointer = 0;
+    return write_dir(superblock, dir_inode, dir);
+}
+
+// Create root directory, "." and ".." point to the same location
+int create_root_directory(superblock_t* superblock) {
+    inode_t* dir_inode;
+    if (create_inode_type(superblock, dir_inode, INODE_DIRECTORY) < 0) {
+        return -1;
+    }
+
+    file_link_t* current_dir;
+    file_link->inode_id = dir_inode->id;
+    file_link->filename = ".";
+
+    file_link_t* parent_dir;
+    file_link->inode_id = dir_inode->id;
     file_link->filename = "..";
 
     directory_t* dir;
