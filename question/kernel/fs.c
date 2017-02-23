@@ -257,7 +257,6 @@ int delete_file_link(directory_t* dir, char* filename) {
 
     // Shift array left one, therefore deleting the file
     memmove(&dir->links[index+1], &dir->links[index], (dir->files_count-index) * sizeof(file_link_t));
-    dir->links[index] = value;
 
     return 0;
 }
@@ -494,7 +493,7 @@ int path_to_inode(superblock_t* superblock, directory_t* dir, inode_t* inode, ch
 }
 
 // Returns file descriptor id
-int open_file(superblock_t* superblock, file_descriptor_table_t fdtable, directory_t* dir, char* path, int flags) {
+int open_file(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* dir, char* path, int flags) {
     // Check we can open more files
     if (fdtable->count >= MAX_OPEN_FILES) {
         return -1;
@@ -524,33 +523,37 @@ int open_file(superblock_t* superblock, file_descriptor_table_t fdtable, directo
     return file_descriptor->id;
 }
 
-// Close a file TODO
-int close_file(superblock_t* superblock, file_descriptor_table_t fdtable, directory_t* dir, char* path, int flags) {
-    // Check we can open more files
-    if (fdtable->count >= MAX_OPEN_FILES) {
-        return -1;
-    }
-
-    // Load the file
-    inode_t* inode;
-    path_to_inode(superblock, dir, inode, path);
-
+// Close a file, 0 on success
+int close_file(superblock_t* superblock, file_descriptor_table_t* fdtable, int file_descriptor_id) {
     // Check the file is not already open
+    int index = -1;
     for (int i=0; i < fdtable->count; i++) {
-        if (fdtable->open[i]->inode_id == inode->id) {
-            return -1;
+        if (fdtable->open[i]->id == file_descriptor_id) {
+            index = i;
+            break;
         }
     }
 
-    // Create a new file descriptor
-    file_descriptor_t file_descriptor;
-    file_descriptor->id = fdtable->count;
-    file_descriptor->flags = flags;
-    file_descriptor->inode_id = inode->id;
+    // File not open
+    if (index == -1) {
+        return -1;
+    }
 
-    // Add to table and update the count
-    fdtable->open[file_descriptor->id] = file_descriptor;
-    fdtable->count++;
+    // Update number of open files
+    fdtable->count--;
 
-    return file_descriptor->id;
+    // Shift array left one, therefore deleting the file descriptor
+    memmove(&fdtable->open[index+1], &fdtable->open[index], (fdtable->count-index) * sizeof(file_descriptor_t));
+
+    return 0;
+}
+
+// Returns inode from a file descriptor id, returns 0 on success
+int fdid_to_inode(superblock_t* superblock, file_descriptor_table_t* fdtable, int file_descriptor_id, inode_t* inode) {
+    for (int i=0; i < fdtable->count; i++) {
+        if (fdtable->open[i]->id == file_descriptor_id) {
+            return read_inode(superblock, fdtable->open[i]->inode_id, inode);
+        }
+    }
+    return -1;
 }
