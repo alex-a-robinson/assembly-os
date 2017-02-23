@@ -226,7 +226,7 @@ waiting_t* set_waiting(pid_t pid, pid_t waiting_pid) {
 }
 
 // Add a file descriptor from a processes open file table
-int add_fd(pid_t pid, int fd) {
+int add_process_fd(pid_t pid, int fd) {
     file_descriptor_table_t* fdtable;
     fdtable = proccess(pid)->fd_table;
 
@@ -241,7 +241,7 @@ int add_fd(pid_t pid, int fd) {
 }
 
 // Removes a file descriptor from a processes open file table
-int remove_fd(pid_t pid, int fd) {
+int remove_process_fd(pid_t pid, int fd) {
     file_descriptor_table_t* fdtable;
     fdtable = proccess(pid)->fd_table;
 

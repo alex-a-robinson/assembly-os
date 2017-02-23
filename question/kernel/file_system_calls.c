@@ -5,6 +5,8 @@ superblock_t* mounted = NULL;
 directory_t* root_dir = NULL;
 file_descriptor_table_t* open_files;
 
+int load_io_devices()
+
 // Mount a disk, NOTE hard coded device. Returns 0 on success
 int sys_mount() {
     if (mounted != NULL) {
@@ -15,9 +17,12 @@ int sys_mount() {
     int status = read_superblock(mounted);
     if (!valid_superblock(mounted)) {
         status |= init_disk(mounted, root_dir);
+        status |= create_io_devices(mounted, open_files, root_dir);
     } else {
         status |= read_root_dir(mounted, root_dir);
     }
+
+    // TODO LOAD IO Devices
 
     if (status < 0) {
         error("Error mounting disk\n");

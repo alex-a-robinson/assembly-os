@@ -21,9 +21,10 @@
 #define MAX_INODE_BITMAP_SIZE ((int) (MAX_NUMBER_OF_INODES) / (BITS_PER_WORD))
 
 // inode types
-#define INODE_UNALLOCATED 0
-#define INODE_FILE 1
-#define INODE_DIRECTORY 2
+#define INODE_UNALLOCATED ( 0 )
+#define INODE_FILE        ( 1 )
+#define INODE_DIRECTORY   ( 2 )
+#define INODE_DEVICE      ( 3 )
 
 // directory constants
 #define MAX_PATH_LENGTH 1024
