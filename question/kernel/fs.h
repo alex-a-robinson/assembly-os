@@ -26,6 +26,7 @@
 #define INODE_DIRECTORY 2
 
 // directory constants
+#define MAX_PATH_LENGTH 1024
 #define MAX_FILE_NAME_LENGTH 100
 #define MAX_FILES_IN_DIRECTORY 10
 
