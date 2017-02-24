@@ -66,6 +66,11 @@ extern void yield();
 
 // write n bytes from x to   the file descriptor fd; return bytes written
 extern int write( int fd, const void* x, size_t n );
+extern int open(const void* path, int flags);
+extern int close(int fd);
+extern int mount();
+extern int unmount();
+
 void err(char* msg);
 void puts(char* msg);
 
