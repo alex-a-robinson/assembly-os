@@ -558,12 +558,24 @@ int close_file(superblock_t* superblock, file_descriptor_table_t* fdtable, int f
 
 // Returns inode from a file descriptor id, returns 0 on success
 int fdid_to_inode(superblock_t* superblock, file_descriptor_table_t* fdtable, int file_descriptor_id, inode_t* inode) {
+    file_descriptor_t* fd = fdid_to_fd(fdtable, file_descriptor_id);
+
+    // Failed to get file descriptor
+    if (fd == NULL) {
+        return -1;
+    }
+
+    return read_inode(superblock, fd->inode_id, inode);
+}
+
+// Returns file descriptor from a file descriptor id
+file_descriptor_t* fdid_to_fd(file_descriptor_table_t* fdtable, int file_descriptor_id) {
     for (int i=0; i < fdtable->count; i++) {
         if (fdtable->open[i]->id == file_descriptor_id) {
-            return read_inode(superblock, fdtable->open[i]->inode_id, inode);
+            return &fdtable->open[i];
         }
     }
-    return -1;
+    return NULL;
 }
 
 // IO devices created on disk

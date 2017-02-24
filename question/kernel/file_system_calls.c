@@ -5,6 +5,8 @@ superblock_t* mounted = NULL;
 directory_t* root_dir = NULL;
 file_descriptor_table_t* open_files;
 
+extern pcb_t* current;
+
 extern STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
 
 // Mount a disk, NOTE hard coded device. Returns 0 on success
@@ -103,4 +105,61 @@ int sys_close(ctx_t* ctx, int fd) {
 
     // Remove from process open files table
     return remove_fd(current->pid, fd);
+}
+
+int process_has_permission(int pid, int fdid) {
+    file_descriptor_t* fd = fdid_to_fd(open_files, fdid);
+
+    // FDID not in file descriptors table i.e. not open
+    if (fd == NULL) {
+        return -1;
+    }
+
+    // Check if its open globaly
+    if (fd->flags == READ_GLOBAL || fd->flags == WRITE_GLOBAL) {
+        return 1;
+    }
+
+    // Otherwise check if the process has it open
+    return proc_fd_open(pd, fdid);
+}
+
+int sys_write(int fd, char* x, int n) {
+    // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
+
+    current->priority.io_burst++;
+
+
+
+    // Convert file handler to QEMU devices
+    PL011_t* device = UART1; // defult to error
+    if (fd == STDOUT_FILENO) {
+        device = UART0;
+    } else if (fd == STDERR_FILENO) {
+        device = UART1;
+    }
+
+    for (int i = 0; i < n; i++) {
+        PL011_putc(device, *x++, true);
+    }
+    return n;
+}
+
+int sys_read(int fd, char* x, int n) { // NOTE BLOCKING
+    // TODO use differnt file handlers
+
+    current->priority.io_burst++;
+
+    PL011_t* device = UART1; // defult to error
+
+    // TODO test this works
+    for (int i = 0; i < n; i++) {
+        x[i] = PL011_getc(device, true);
+
+        if (x[i] == '\x0A') {
+            x[i] = '\x00';
+            break;
+        }
+    }
+    return n;
 }

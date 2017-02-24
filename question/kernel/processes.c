@@ -266,3 +266,14 @@ int remove_process_fd(pid_t pid, int fd) {
 
     return 0;
 }
+
+// Returns 1 if process contains file descriptor in open files table
+int proc_fd_open(pid_t pid, int file_descriptor_id) {
+    fd_proc_table_t fdtable = process(pid)->fd_table;
+    for (int i=0; i < fdtable->count; i++) {
+        if (fdtable->open[i] == file_descriptor_id) {
+            return 1;
+        }
+    }
+    return 0;
+}

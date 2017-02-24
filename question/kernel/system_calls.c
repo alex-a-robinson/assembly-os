@@ -2,44 +2,6 @@
 
 extern pcb_t* current;
 
-int sys_write(int fd, char* x, int n) {
-    // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
-
-    current->priority.io_burst++;
-
-    // Convert file handler to QEMU devices
-    PL011_t* device = UART1; // defult to error
-    if (fd == STDOUT_FILENO) {
-        device = UART0;
-    } else if (fd == STDERR_FILENO) {
-        device = UART1;
-    }
-
-    for (int i = 0; i < n; i++) {
-        PL011_putc(device, *x++, true);
-    }
-    return n;
-}
-
-int sys_read(int fd, char* x, int n) { // NOTE BLOCKING
-    // TODO use differnt file handlers
-
-    current->priority.io_burst++;
-
-    PL011_t* device = UART1; // defult to error
-
-    // TODO test this works
-    for (int i = 0; i < n; i++) {
-        x[i] = PL011_getc(device, true);
-
-        if (x[i] == '\x0A') {
-            x[i] = '\x00';
-            break;
-        }
-    }
-    return n;
-}
-
 void sys_fork(ctx_t* ctx) {
     // https://linux.die.net/man/2/fork
     // NOTE what to do about file descriptors?
