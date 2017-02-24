@@ -41,7 +41,8 @@ char* s(char* b, int x) {
     return b;
 }
 
-// TODO make full path out of small path + root_dir
-int get_full_path(char* path, char* full_path) {
-    // TODO
-}
+// // TODO make full path out of small path + root_dir
+// int get_full_path(char* path, char* full_path) {
+//     // TODO
+//
+// }

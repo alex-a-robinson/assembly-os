@@ -7,7 +7,7 @@ REQ_RD   = '02'
 ACK_OKAY = '00'
 ACK_FAIL = '01'
 
-# 00 command means a query operation: we pack the block size 
+# 00 command means a query operation: we pack the block size
 # and count into a single datum, then return it.
 
 def conf( fd, req ) :
@@ -18,7 +18,7 @@ def conf( fd, req ) :
 
 # 01 command means a write operation:
 # - if the address provided is invalid the request fails,
-# - if the data    provided is invalid the request fails, 
+# - if the data    provided is invalid the request fails,
 # - else write the block to   the disk, then flush  the data.
 
 def   wr( fd, req ) :
@@ -30,7 +30,7 @@ def   wr( fd, req ) :
   if( len( data ) != args.block_len ) :
     return [ ACK_FAIL ]
 
-  os.lseek( fd, address * args.block_len, os.SEEK_SET ) 
+  os.lseek( fd, address * args.block_len, os.SEEK_SET )
   n = os.write( fd, data )
 
   if( len( data ) != n              ) :
@@ -97,20 +97,20 @@ if ( __name__ == '__main__' ) :
   # open disk image
 
   fd = os.open( args.file, os.O_RDWR )
-  
+
   # open network connection
 
   s = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-  
+
   s.connect( ( args.host, args.port ) ) ; sd = s.makefile()
 
   # read request, process it and write acknowledgement
-  
+
   while ( True ) :
     req = sd.readline().strip().split( ' ' )
 
-    logging.debug( 'req = ' + str( req ) )  
-  
+    logging.debug( 'req = ' + str( req ) )
+
     if   ( req[ 0 ] == REQ_CONF ) :
       ack = conf( fd, req )
     elif ( req[ 0 ] == REQ_WR   ) :
@@ -128,7 +128,7 @@ if ( __name__ == '__main__' ) :
       ack = ack[ 0 ]
 
     sd.write( ack + '\n' ) ; sd.flush()
-  
+
   # close network connection
 
   sd.close()
