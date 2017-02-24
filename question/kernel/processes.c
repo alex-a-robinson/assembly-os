@@ -227,8 +227,8 @@ waiting_t* set_waiting(pid_t pid, pid_t waiting_pid) {
 
 // Add a file descriptor from a processes open file table
 int add_process_fd(pid_t pid, int fd) {
-    file_descriptor_table_t* fdtable;
-    fdtable = proccess(pid)->fd_table;
+    fd_proc_table_t* fdtable;
+    fdtable = &process(pid)->fd_table;
 
     // Check we can open another file
     if (fdtable->count >= MAX_OPEN_FILES) {
@@ -242,8 +242,8 @@ int add_process_fd(pid_t pid, int fd) {
 
 // Removes a file descriptor from a processes open file table
 int remove_process_fd(pid_t pid, int fd) {
-    file_descriptor_table_t* fdtable;
-    fdtable = proccess(pid)->fd_table;
+    fd_proc_table_t* fdtable;
+    fdtable = &process(pid)->fd_table;
 
     int index = -1;
     for (int i=0; i < fdtable->count; i++) {
@@ -269,7 +269,7 @@ int remove_process_fd(pid_t pid, int fd) {
 
 // Returns 1 if process contains file descriptor in open files table
 int proc_fd_open(pid_t pid, int file_descriptor_id) {
-    fd_proc_table_t fdtable = process(pid)->fd_table;
+    fd_proc_table_t* fdtable = &process(pid)->fd_table;
     for (int i=0; i < fdtable->count; i++) {
         if (fdtable->open[i] == file_descriptor_id) {
             return 1;

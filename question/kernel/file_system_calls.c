@@ -7,7 +7,7 @@ file_descriptor_table_t* open_files;
 
 extern pcb_t* current;
 
-extern STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
+extern int STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
 
 // Mount a disk, NOTE hard coded device. Returns 0 on success
 int sys_mount() {
@@ -57,7 +57,7 @@ int sys_unmount() {
 
     // Close all open files
     for (int i=0; i < open_files->count; i++) {
-        if (close_file(mounted, open_files, open_files->open[i]) < 0) {
+        if (close_file(mounted, open_files, open_files->open[i].id) < 0) {
             error("Couldn't close all open files\n");
             return -1;
         }
@@ -73,7 +73,7 @@ int sys_unmount() {
 }
 
 // Open a file, returns -1 on error otherwise the file descriptros id
-int sys_open(ctx_t* ctx, char* path, int flags) {
+int sys_open(char* path, int flags) {
     //char full_path[MAX_PATH_LENGTH];
     //get_full_path(path, full_path);
 
@@ -87,7 +87,7 @@ int sys_open(ctx_t* ctx, char* path, int flags) {
     }
 
     // Add from process open files table & check for an error
-    if (add_fd(current->pid, fd) < 0) {
+    if (add_process_fd(current->pid, fd) < 0) {
         return -1;
     }
 
@@ -95,7 +95,7 @@ int sys_open(ctx_t* ctx, char* path, int flags) {
 }
 
 // Close file, -1 on error, 0 on success
-int sys_close(ctx_t* ctx, int fd) {
+int sys_close(int fd) {
 
     // Open the file
     if (close_file(mounted, open_files, fd) < 0) {
@@ -104,7 +104,7 @@ int sys_close(ctx_t* ctx, int fd) {
     }
 
     // Remove from process open files table
-    return remove_fd(current->pid, fd);
+    return remove_process_fd(current->pid, fd);
 }
 
 int process_has_file_permission(int pid, int fdid, int mode) {
@@ -127,7 +127,7 @@ int process_has_file_permission(int pid, int fdid, int mode) {
     }
 
     // Otherwise check if the process has it open
-    return proc_fd_open(pd, fdid);
+    return proc_fd_open(pid, fdid);
 }
 
 // Write to a device

@@ -128,7 +128,7 @@ int open_file(superblock_t* superblock, file_descriptor_table_t* fdtable, direct
 int close_file(superblock_t* superblock, file_descriptor_table_t* fdtable, int file_descriptor_id);
 
 int init_inodes(superblock_t* superblock);
-void init_disk(superblock_t* superblock, directory_t* root_dir);
+int init_disk(superblock_t* superblock, directory_t* root_dir);
 int create_root_directory(superblock_t* superblock, directory_t* root_dir);
 int read_root_dir(superblock_t* superblock, directory_t* dir);
 int create_io_devices(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* root_dir);

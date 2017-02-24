@@ -53,8 +53,8 @@ typedef struct {
 
 typedef struct {
   int count;
-  int open[MAX_OPEN_FILES]
-} fd_proc_table_t
+  int open[MAX_OPEN_FILES];
+} fd_proc_table_t;
 
 // TODO add pending signals
 // TODO add child exit code
@@ -92,5 +92,8 @@ waiting_t* get_waiting(pid_t pid, pid_t waiting_pid);
 void update_waiters(pid_t pid, int result);
 waiting_t* set_waiting(pid_t pid, pid_t waiting_pid);
 
+int add_process_fd(pid_t pid, int fd);
+int remove_process_fd(pid_t pid, int fd);
+int proc_fd_open(pid_t pid, int file_descriptor_id);
 
 #endif

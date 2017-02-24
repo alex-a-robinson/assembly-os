@@ -102,6 +102,29 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             ctx->gpr[0] = (uint32_t)bytes_read;
             break;
         }
+        case SYS_OPEN: {
+            char* path = (char*)(ctx->gpr[0]);
+            int flags = (int)(ctx->gpr[1]);
+            int fd = sys_open(path, flags);
+            ctx->gpr[0] = (uint32_t)fd;
+            break;
+        }
+        case SYS_CLOSE: {
+            int fd = (int)(ctx->gpr[0]);
+            int status = sys_close(fd);
+            ctx->gpr[0] = (uint32_t)status;
+            break;
+        }
+        case SYS_MOUNT: {
+            int status = sys_mount();
+            ctx->gpr[0] = (uint32_t)status;
+            break;
+        }
+        case SYS_UNMOUNT: {
+            int status = sys_unmount();
+            ctx->gpr[0] = (uint32_t)status;
+            break;
+        }
         case SYS_YIELD: {
             sys_yield(ctx);
             break;
@@ -145,7 +168,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             break;
         }
         case SYS_WAIT: {
-            pid_t pid = (void*)(ctx->gpr[0]);
+            pid_t pid = (int)(ctx->gpr[0]);
             int r = sys_wait(ctx, current->pid, pid);
             ctx->gpr[0] = r;
             break;

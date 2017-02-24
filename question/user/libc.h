@@ -38,12 +38,18 @@ typedef int pid_t;
 #define SYS_UNLOCK    ( 0x11 )
 #define SYS_WAIT      ( 0x12 )
 #define SYS_FORKWAIT  ( 0x13 )
+#define SYS_OPEN      ( 0x14 )
+#define SYS_CLOSE     ( 0x15 )
+#define SYS_MOUNT     ( 0x16 )
+#define SYS_UNMOUNT   ( 0x17 )
 
 #define SIG_TERM      ( 0x00 )
 #define SIG_QUIT      ( 0x01 )
 
 #define EXIT_SUCCESS  ( 0 )
 #define EXIT_FAILURE  ( 1 )
+
+// TODO We need to get these instead of declaring them
 
 #define  STDIN_FILENO ( 0 )
 #define STDOUT_FILENO ( 1 )

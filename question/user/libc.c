@@ -80,6 +80,57 @@ int write( int fd, const void* x, size_t n ) {
     return r;
 }
 
+int open(const void* path, int flags) {
+    int fd;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 = path
+    "mov r1, %3 \n" // assign r1 =  flags
+    "svc %1     \n" // make system call SYS_OPEN
+    "mov %0, r0 \n" // assign r  = r0
+    : "=r" (fd)
+    : "I" (SYS_OPEN), "r" (path), "r" (flags)
+    : "r0", "r1");
+
+    return fd;
+}
+
+int close(int fd) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 = fd
+    "svc %1     \n" // make system call SYS_CLOSE
+    "mov %0, r0 \n" // assign r  = r0
+    : "=r" (r)
+    : "I" (SYS_CLOSE), "r" (fd)
+    : "r0");
+
+    return r;
+}
+
+int mount() {
+    int r;
+
+    asm volatile( "svc %1     \n" // make system call SYS_MOUNT
+    "mov %0, r0 \n" // assign r  = r0
+    : "=r" (r)
+    : "I" (SYS_MOUNT)
+    : "r0");
+
+    return r;
+}
+
+int unmount() {
+    int r;
+
+    asm volatile( "svc %1     \n" // make system call SYS_UNMOUNT
+    "mov %0, r0 \n" // assign r  = r0
+    : "=r" (r)
+    : "I" (SYS_UNMOUNT)
+    : "r0");
+
+    return r;
+}
+
 void err(char* msg) {
     write(STDERR_FILENO, msg, strlen(msg));
 }
