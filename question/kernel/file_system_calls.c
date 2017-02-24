@@ -7,13 +7,11 @@ file_descriptor_table_t* open_files;
 
 extern STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
 
-int load_io_devices()
-
 // Mount a disk, NOTE hard coded device. Returns 0 on success
 int sys_mount() {
     if (mounted != NULL) {
         error("Disk already mounted\n");
-        return 1;
+        return -1;
     }
 
     int status = read_superblock(mounted);
@@ -24,12 +22,11 @@ int sys_mount() {
         status |= read_root_dir(mounted, root_dir);
     }
 
-    // TODO LOAD IO Devices
     status |= open_io_devices();
 
     if (status < 0) {
         error("Error mounting disk\n");
-        return 1;
+        return -1;
     }
     return 0;
 }
@@ -53,7 +50,7 @@ int open_io_devices() {
 int sys_unmount() {
     if (mounted == NULL) {
         error("Disk not mounted\n");
-        return 1;
+        return -1;
     }
 
     // Close all open files
@@ -66,7 +63,7 @@ int sys_unmount() {
 
     if (write_superblock(mounted) < 0) {
         error("Failed to unmount disk\n");
-        return 1;
+        return -1;
     }
     mounted = NULL;
     root_dir = NULL;
