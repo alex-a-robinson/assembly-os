@@ -35,7 +35,9 @@
 #define MAX_OPEN_FILES 10
 #define READ 0
 #define WRITE 1
-#define READ_WRITE 2
+#define READ_WRITE 2 
+#define READ_GLOBAL 3 // Anyone can read
+#define WRITE_GLOBAL 4 // Anyone can write
 
 
 typedef struct {

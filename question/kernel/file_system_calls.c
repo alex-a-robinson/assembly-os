@@ -5,6 +5,8 @@ superblock_t* mounted = NULL;
 directory_t* root_dir = NULL;
 file_descriptor_table_t* open_files;
 
+extern STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
+
 int load_io_devices()
 
 // Mount a disk, NOTE hard coded device. Returns 0 on success
@@ -23,11 +25,26 @@ int sys_mount() {
     }
 
     // TODO LOAD IO Devices
+    status |= open_io_devices();
 
     if (status < 0) {
         error("Error mounting disk\n");
         return 1;
     }
+    return 0;
+}
+
+// Open IO devices
+int open_io_devices() {
+    STDIN_FILENO  = open_file(mounted, open_files, root_dir, "/dev/stdin", READ_GLOBAL);
+    STDOUT_FILENO = open_file(mounted, open_files, root_dir, "/dev/stdout", WRITE_GLOBAL);
+    STDERR_FILENO = open_file(mounted, open_files, root_dir, "/dev/stderr", WRITE_GLOBAL);
+
+    // Return error if any failed
+    if (STDIN_FILENO < 0 || STDOUT_FILENO < 0 || STDERR_FILENO < 0) {
+        return -1;
+    }
+
     return 0;
 }
 
@@ -37,6 +54,14 @@ int sys_unmount() {
     if (mounted == NULL) {
         error("Disk not mounted\n");
         return 1;
+    }
+
+    // Close all open files
+    for (int i=0; i < open_files->count; i++) {
+        if (close_file(mounted, open_files, open_files->open[i]) < 0) {
+            error("Couldn't close all open files\n");
+            return -1;
+        }
     }
 
     if (write_superblock(mounted) < 0) {

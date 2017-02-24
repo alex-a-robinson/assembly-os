@@ -45,9 +45,9 @@
 #define EXIT_SUCCESS  ( 0 )
 #define EXIT_FAILURE  ( 1 )
 
-#define  STDIN_FILENO ( 0 )
-#define STDOUT_FILENO ( 1 )
-#define STDERR_FILENO ( 2 )
+int STDIN_FILENO = -1;
+int STDOUT_FILENO = -1;
+int STDERR_FILENO = -1;
 
 int sys_write(int fd, char* x, int n);
 int sys_read(int fd, char* x, int n);
