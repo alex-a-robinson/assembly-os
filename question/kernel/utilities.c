@@ -1,7 +1,10 @@
 #include "utilities.h"
 
 void error(char* msg) {
-    sys_write(STDERR_FILENO, msg, strlen(msg));
+    PL011_t* device = UART1;
+    for (int i = 0; i < strlen(msg); i++) {
+        PL011_putc(device, *msg++, true); // Write to STDERR
+    }
 }
 
 void sitoa( char* r, int x ) {

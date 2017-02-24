@@ -7,7 +7,9 @@ file_descriptor_table_t* open_files;
 
 extern pcb_t* current;
 
-extern int STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
+int STDIN_FD = -1;
+int STDOUT_FD = -1;
+int STDERR_FD = -1;
 
 // Mount a disk, NOTE hard coded device. Returns 0 on success
 int sys_mount() {
@@ -35,12 +37,12 @@ int sys_mount() {
 
 // Open IO devices
 int open_io_devices() {
-    STDIN_FILENO  = open_file(mounted, open_files, root_dir, "/dev/stdin", READ_GLOBAL);
-    STDOUT_FILENO = open_file(mounted, open_files, root_dir, "/dev/stdout", WRITE_GLOBAL);
-    STDERR_FILENO = open_file(mounted, open_files, root_dir, "/dev/stderr", WRITE_GLOBAL);
+    STDIN_FD  = open_file(mounted, open_files, root_dir, "/dev/stdin", READ_GLOBAL);
+    STDOUT_FD = open_file(mounted, open_files, root_dir, "/dev/stdout", WRITE_GLOBAL);
+    STDERR_FD = open_file(mounted, open_files, root_dir, "/dev/stderr", WRITE_GLOBAL);
 
     // Return error if any failed
-    if (STDIN_FILENO < 0 || STDOUT_FILENO < 0 || STDERR_FILENO < 0) {
+    if (STDIN_FD < 0 || STDOUT_FD < 0 || STDERR_FD < 0) {
         return -1;
     }
 
@@ -134,9 +136,9 @@ int process_has_file_permission(int pid, int fdid, int mode) {
 int write_device(int fd, char* x, int n) {
     // Convert file handler to QEMU devices
     PL011_t* device = UART1; // defult to error
-    if (fd == STDOUT_FILENO) {
+    if (fd == STDOUT_FD) {
         device = UART0;
-    } else if (fd == STDERR_FILENO) {
+    } else if (fd == STDERR_FD) {
         device = UART1;
     } else {
         error("Unknown device\n");
@@ -153,7 +155,7 @@ int write_device(int fd, char* x, int n) {
 int read_device(int fd, char* x, int n) {
     // Convert file handler to QEMU devices
     PL011_t* device = UART1; // defult to error
-    if (fd == STDIN_FILENO) {
+    if (fd == STDIN_FD) {
         device = UART1;
     } else {
         error("Unknown device\n");
