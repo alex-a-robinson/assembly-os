@@ -1,26 +1,42 @@
 #include "fs.h"
 
-/*
-TODO:
-  - Implement Data blocks
-  - Implement system calls
-    - open, read, write, close
-    - fstat = stat with file descriptor id
-    - stat = file info from path
-  - Implement cat and wc and load a program into memroy
-  - Write root files
-  - Read and write a byte at a time with inodes
-*/
 
+/******************************************************
+ * Block operations
+ ******************************************************/
 
 // Returns ceil of number of blocks bytes bytes occupies
 uint32_t blocks_occupied(int block_size, int bytes) {
     return (block_size + bytes - 1) / block_size;
 }
 
+// Mark datablock as allocated
+void allocate_block(superblock_t* superblock, uint32_t addr) {
+    set_bit(superblock->free_block_bitmap, addr);
+}
+
+// Mark datablock as unallocated
+void unallocate_block(superblock_t* superblock, uint32_t addr) {
+    clear_bit(superblock->free_block_bitmap, addr);
+}
+
+// Returns next free block number or 0 if none
+uint32_t free_data_block(superblock_t* superblock) {
+    for (uint32_t addr=superblock->data_block_start; addr < superblock->disk_block_num; addr++) {
+        if (get_bit(superblock->free_block_bitmap, addr) == 0) {
+            return addr;
+        }
+    }
+    return 0;
+}
+
+/******************************************************
+ * Super Block operations
+ ******************************************************/
+
 // Read superblock from disk
 int read_superblock(superblock_t* superblock) {
-    return disk_rd(0, superblock, sizeof(superblock_t));
+    return disk_rd(0, (uint8_t*)superblock, sizeof(superblock_t));
 }
 
 // Returns 1 if superblock is valid else 0
@@ -31,7 +47,7 @@ int valid_superblock(superblock_t* superblock) {
 
 // Write a superblock to disk
 int write_superblock(superblock_t* superblock) {
-    return disk_wr(0, superbock, sizeof(superblock_t));
+    return disk_wr(0, (uint8_t*)superblock, sizeof(superblock_t));
 }
 
 // Create a new superblock
@@ -55,27 +71,117 @@ void new_superblock(superblock_t* superblock) {
     return;
 }
 
-// Initiate the disk for the first time
-void init_disk(superblock_t* superblock, directory_t* root_dir) {
-    int status = 0;
-    new_superblock(superblock);
-    status |= write_superblock(superblock);
-    status |= init_inodes(superblock);
-    status |= create_root_directory(superblock, root_dir);
-    return status;
+/******************************************************
+ * Misc operations
+ ******************************************************/
+
+int dir_to_inode(superblock_t* superblock, directory_t* dir, inode_t* inode) {
+     int id = dir->links[0].inode_id; // ID of "." entry in dir
+     return read_inode(superblock, id, inode);
+ }
+
+ // Return a inode from a filename
+int filename_to_inode(superblock_t* superblock, inode_t* dir_inode, char* filename, inode_t* inode) {
+     int inode_id = directory_lookup(superblock, dir_inode, filename);
+
+     // Check we found the inode
+     if (inode_id < 0) {
+         return -1;
+     }
+
+     // Read the inode, check for errors
+     if (read_inode(superblock, inode_id, inode) < 0) {
+         return -1;
+     }
+
+     return 0;
+ }
+
+ // Return a directory from a filename
+int filename_to_dir(superblock_t* superblock, inode_t* parent_dir_inode, char* filename, directory_t* dir) {
+     inode_t* dir_inode;
+     if (filename_to_inode(superblock, parent_dir_inode, filename, dir_inode) < 0) {
+         return -1;
+     }
+
+     uint32_t file_pointer = 0;
+     if (read_from_inode(superblock, dir_inode, &file_pointer, (uint8_t*)dir, sizeof(directory_t)) < 0) {
+         return -1;
+     }
+
+     return 0;
+ }
+
+ // Finds an inode from a path, return 0 on success
+int path_to_inode(superblock_t* superblock, directory_t* dir, inode_t* inode, char* path) {
+     inode_t* current_dir_inode;
+     inode_t* temp_inode;
+
+     // Load inode of current directory
+     if (dir_to_inode(superblock, dir, current_dir_inode) < 0) {
+         return -1;
+     }
+
+     // Split string on "/"
+     char* part;
+     part = strtok(path, "/");
+
+     // Until path is empty
+     while(part != NULL) {
+         if (filename_to_inode(superblock, current_dir_inode, part, temp_inode) < 0) {
+             return -1;
+         }
+
+         part = strtok(NULL, "/");
+
+         // If we get another directory, continue otherwise if its a file stop
+         if (temp_inode->type == INODE_DIRECTORY) {
+             current_dir_inode = temp_inode;
+             continue;
+         } else if (temp_inode->type == INODE_FILE) {
+             if (part == NULL) {
+                 inode = temp_inode;
+                 return 0;
+             } else { // Found file however still path left, therefore error
+                 return -1;
+             }
+         } else { // unknown file type
+             return -1;
+         }
+     }
+
+     return -1;
+ }
+
+// Returns inode from a file descriptor id, returns 0 on success
+int fdid_to_inode(superblock_t* superblock, file_descriptor_table_t* fdtable, int file_descriptor_id, inode_t* inode) {
+    file_descriptor_t* fd = fdid_to_fd(fdtable, file_descriptor_id);
+
+    // Failed to get file descriptor
+    if (fd == NULL) {
+        return -1;
+    }
+
+    return read_inode(superblock, fd->inode_id, inode);
 }
 
-// Create and write empty inodes, returns 0 for success, -1 for failure
-int init_inodes(superblock_t* superblock) {
-    for (int i=0; i<superblock->inode_num; i++) {
-        inode_t* inode;
-        new_inode(i, inode);
-        if (write_inode(superblock, inode) < 0) {
-            return -1;
+// Returns file descriptor from a file descriptor id
+file_descriptor_t* fdid_to_fd(file_descriptor_table_t* fdtable, int file_descriptor_id) {
+    for (int i=0; i < fdtable->count; i++) {
+        if (fdtable->open[i].id == file_descriptor_id) {
+            return &fdtable->open[i];
         }
     }
-    return 0;
+    return NULL;
 }
+
+/******************************************************
+ * Inode operations
+ ******************************************************/
+
+ uint32_t id_to_addr(superblock_t* superblock, int id) {
+     return superblock->inode_start + id * blocks_occupied(superblock->disk_block_length, sizeof(inode_t));
+ }
 
 // Create an empty inode
 void new_inode(int id, inode_t* inode) {
@@ -84,14 +190,10 @@ void new_inode(int id, inode_t* inode) {
     return;
 }
 
-uint32_t id_to_addr(uperblock_t* superblock, int id) {
-    return superblock->inode_start + id * blocks_occupied(superblock->disk_block_length, sizeof(inode_t));
-}
-
 // Read inode by inode id
 int read_inode(superblock_t* superblock, int id, inode_t* inode) {
     uint32_t addr = id_to_addr(superblock, id);
-    return disk_rd(addr, inode, sizeof(inode_t))
+    return disk_rd(addr, (unint8_t*)inode, sizeof(inode_t));
 }
 
 // NOTE This will fail if sizeof(inode_t) > block_size, same with superblock
@@ -99,27 +201,7 @@ int read_inode(superblock_t* superblock, int id, inode_t* inode) {
 // Write inode
 int write_inode(superblock_t* superblock, inode_t* inode) {
     uint32_t addr = id_to_addr(superblock, inode->id);
-    return disk_wr(addr, inode, sizeof(inode_t));
-}
-
-// Mark datablock as allocated
-void allocate_block(superblock_t* superblock, unit32_t addr) {
-    set_bit(superblock->free_block_bitmap, addr);
-}
-
-// Mark datablock as unallocated
-void unallocate_block(superblock_t* superblock, unit32_t addr) {
-    clear_bit(superblock->free_block_bitmap, addr);
-}
-
-// Returns next free block number or 0 if none
-uint32_t free_data_block(superblock_t* superblock) {
-    for (uint32_t addr=superblock->data_block_start; addr<superblock->disk_block_num; addr++) {
-        if (get_bit(superblock->free_block_bitmap, addr) == 0) {
-            return addr;
-        }
-    }
-    return 0;
+    return disk_wr(addr, (unint8_t*)inode, sizeof(inode_t));
 }
 
 // Find the next free inode
@@ -160,230 +242,6 @@ int delete_inode(superblock_t* superblock, inode_t* inode) {
     return write_inode(superblock, inode);
 }
 
-// Write a directory to its inode
-int write_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
-    uint32_t file_pointer = 0;
-    return write_to_inode(superblock, inode, &file_pointer, dir, sizeof(directory_t));
-}
-
-// Read the root dir
-int read_root_dir(superblock_t* superblock, directory_t* dir) {
-    inode_t* inode;
-    if (read_inode(superblock, 0, inode) < 0) { // NOTE Inode ID 0 is root dir
-        return -1;
-    }
-    return read_dir(superblock, inode, dir);
-}
-
-// Read a directory to its inode
-int read_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
-    uint32_t file_pointer = 0;
-    return read_from_inode(superblock, inode, &file_pointer, dir, sizeof(directory_t));
-}
-
-// Create a directory
-int create_directory(superblock_t* superblock, inode_t* parent_dir_inode, inode_t* dir_inode, char* filename) {
-    if (create_file(superblock, parent_dir_inode, filename, INODE_DIRECTORY, dir_inode) < 0) {
-        return -1;
-    }
-
-    file_link_t* current_dir;
-    file_link->inode_id = dir_inode->id;
-    file_link->filename = ".";
-
-    file_link_t* parent_dir;
-    file_link->inode_id = parent_dir_inode->id;
-    file_link->filename = "..";
-
-    directory_t* dir;
-    dir->links[0] = current_dir;
-    dir->links[1] = parent_dir;
-    dir->file_count = 2;
-
-    uint32_t file_pointer = 0;
-    return write_dir(superblock, dir_inode, dir);
-}
-
-// Create root directory, "." and ".." point to the same location
-int create_root_directory(superblock_t* superblock, directory_t* root_dir) {
-    inode_t* dir_inode;
-    if (create_inode_type(superblock, dir_inode, INODE_DIRECTORY) < 0) {
-        return -1;
-    }
-
-    file_link_t* current_dir;
-    file_link->inode_id = dir_inode->id;
-    file_link->filename = ".";
-
-    file_link_t* parent_dir;
-    file_link->inode_id = dir_inode->id;
-    file_link->filename = "..";
-
-    directory_t* root_dir;
-    root_dir->links[0] = current_dir;
-    root_dir->links[1] = parent_dir;
-    root_dir->file_count = 2;
-
-    uint32_t file_pointer = 0;
-    return write_dir(superblock, root_dir, dir);
-}
-
-int dir_to_inode(superblock_t* superblock, directory_t* dir, inode_t* inode) {
-    int id = dir->links[0]->inode_id; // ID of "." entry in dir
-    return read_inode(superblock, id, inode);
-
-}
-
-// Deletes a file link from a directory
-int delete_file_link(directory_t* dir, char* filename) {
-    // Search directory
-    int index = -1;
-    for (int i=0; i<dir->file_count; i++) {
-        file_link_t* file_link = dir->links[i];
-        if (strcmp(filename, file_link->filename) == 0) { // Found match
-            index = i;
-            break;
-        }
-    }
-
-    // File not in directory
-    if (index == -1) {
-        return -1;
-    }
-
-    // Update number of files in the directory
-    dir->files_count--;
-
-    // Shift array left one, therefore deleting the file
-    memmove(&dir->links[index+1], &dir->links[index], (dir->files_count-index) * sizeof(file_link_t));
-
-    return 0;
-}
-
-// Delete a directory, only if empty
-int delete_dir(superblock_t* superblock, inode_t* parent_dir_inode, char* filename) {
-    // Retrive the directory
-    directory_t* dir;
-    filename_to_dir(superblock, iparent_dir_inode, filename, dir)
-
-    // If dir not empty, error
-    // NOTE can have "." and ".."
-    if (!dir->files_count <= 2) {
-        return -1;
-    }
-
-    return delete_file(superblock, parent_dir_inode, filename);
-}
-
-// Delete a file
-int delete_file(superblock_t* superblock, inode_t* dir_inode, char* filename) {
-    // Retrive the directory
-    directory_t* dir;
-    if (read_dir(superblock, dir_inode, dir,) < 0) {
-        return -1;
-    }
-
-    // Read the inode, check for errors
-    inode_t* inode;
-    if (filename_to_inode(superblock, dir_inode, filename, inode) <0) {
-        return -1;
-    }
-
-    // Delete file link and check status
-    if (delete_file_link(dir, filename) < 0) {
-        return -1;
-    }
-
-    // Write the directory
-    if (write_dir(superblock, dir_inode, dir) < 0) {
-        return -1;
-    }
-
-    // Finally delete
-    return delete_inode(superblock, inode);
-}
-
-// Create a new file
-int create_file(superblock_t* superblock, inode_t* dir_inode, char* filename, int type, inode_t* inode) {
-    // Retrive the directory
-    directory_t* dir;
-    if (read_dir(superblock, dir_inode, dir) < 0) {
-        return -1;
-    }
-
-    // Check we are not already using that filename
-    if (directory_lookup(superblock, dir, filename) < 0) {
-        return -1;
-    }
-
-    // Create a new inode
-    if (create_inode_type(superblock, inode, type) < 0) {
-        return -1;
-    }
-
-    // Create a new link
-    file_link_t* file_link;
-    file_link->inode_id = inode->id;
-    file_link->filename = filename;
-
-    // Update the directory
-    dir->links[dir->files_count] = file_link;
-    dir->files_count++;
-
-    return write_dir(superblock, dir_inode, dir);
-}
-
-// Returns inode id of filename if exists in the directory
-int directory_lookup(superblock_t* superblock, inode_t* dir_inode, char* filename) {
-    // Read the directory
-    uint32_t file_pointer = 0;
-    directory_t* dir;
-    if (read_from_inode(superblock, dir_inode, &file_pointer, dir, sizeof(directory_t)) < 0) {
-        return -1;
-    }
-
-    // Search files
-    for (int i=0; i<dir->file_count; i++) {
-        file_link_t* file_link = dir->links[i];
-        if (strcmp(filename, file_link->filename) == 0) { // Found match
-            return file_link->inode_id;
-        }
-    }
-
-    return -1;
-}
-
-// Return a inode from a filename
-int filename_to_inode(superblock_t* superblock, inode_t* dir_inode, char* filename, inode_t* inode) {
-    int inode_id = directory_lookup(superblock, dir_inode, filename);
-
-    // Check we found the inode
-    if (inode_id < 0) {
-        return -1;
-    }
-
-    // Read the inode, check for errors
-    if (read_inode(superblock, inode_id, inode) < 0) {
-        return -1;
-    }
-
-    return 0;
-}
-
-// Return a directory from a filename
-int filename_to_dir(superblock_t* superblock, inode_t* parent_dir_inode, char* filename, directory_t* dir) {
-    inode_t* dir_inode;
-    if (filename_to_inode(superblock, parent_dir_inode, filename, dir_inode) < 0) {
-        return -1;
-    }
-
-    uint32_t file_pointer = 0;
-    if (read_from_inode(superblock, dir_inode, &file_pointer, dir, sizeof(directory_t)) < 0) {
-        return -1;
-    }
-
-    return 0;
-}
 
 // Read/Write <size> bytes from <bytes> from file_pointer, returns 0 on success
 int _ro_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, uint8_t* bytes, int data_size, int read) {
@@ -392,23 +250,23 @@ int _ro_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, 
     int offset   = (*file_pointer) % superblock->disk_block_length;
 
     // Offset only the first address
-    unint32_t addr = inode->blocks[i] + offset;
+    uint32_t addr = inode->blocks[i] + offset;
     int bytes_in_block = superblock->disk_block_length - offset;
 
     // For each avalible block
     for (int i=block_id+1; i<MAX_INODE_BLOCKS; i++) {
-        int bytes_to_read_or_writen;
+        int bytes_to_read_or_write;
         if (bytes_left < bytes_in_block) { // If fits all in one block
-            bytes_to_read_or_writen = bytes_left;
+            bytes_to_read_or_write = bytes_left;
         } else { // Else read/write the entire block
-            bytes_to_read_or_writen = bytes_in_block;
+            bytes_to_read_or_write = bytes_in_block;
         }
 
         int status;
         if (read) {
-            status = disk_rd(addr, bytes, bytes_to_read_or_writen);
+            status = disk_rd(addr, bytes, bytes_to_read_or_write);
         } else {
-            status = disk_wr(addr, bytes, bytes_to_read_or_writen);
+            status = disk_wr(addr, bytes, bytes_to_read_or_write);
         }
 
         // Check for failure
@@ -417,8 +275,8 @@ int _ro_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, 
         }
 
         // Update how many bytes left & Move pointer
-        bytes_left -= bytes_to_read_or_writen;
-        bytes += bytes_to_read_or_writen;
+        bytes_left -= bytes_to_read_or_write;
+        bytes += bytes_to_read_or_write;
 
         // Check there is still data to read/write
         if (bytes_left <= 0) {
@@ -431,7 +289,7 @@ int _ro_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, 
     }
 
     // Check all the data was read/written
-    if (bytes_to_read_or_writen > 0) {
+    if (bytes_to_read_or_write > 0) {
         return -1;
     }
 
@@ -451,50 +309,106 @@ int write_to_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_poin
     return _ro_inode(superblock, inode, file_pointer, bytes, data_size, 0);
 }
 
-////////////////////////////
-// File Descriptors
-///////////////////////////
+/******************************************************
+ * Directory operations
+ ******************************************************/
 
-// Finds an inode from a path, return 0 on success
-int path_to_inode(superblock_t* superblock, directory_t* dir, inode_t* inode, char* path) {
-    inode_t* current_dir_inode;
-    inode_t* temp_inode;
+// Write a directory to its inode
+int write_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
+    uint32_t file_pointer = 0;
+    return write_to_inode(superblock, inode, &file_pointer, (uint8_t*)dir, sizeof(directory_t));
+}
 
-    // Load inode of current directory
-    if (dir_to_inode(superblock, dir, current_dir_inode) < 0) {
+// Read a directory to its inode
+int read_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
+    uint32_t file_pointer = 0;
+    return read_from_inode(superblock, inode, &file_pointer, (uint8_t*)dir, sizeof(directory_t));
+}
+
+// Create a directory
+int create_directory(superblock_t* superblock, inode_t* parent_dir_inode, inode_t* dir_inode, char* filename) {
+    if (create_file(superblock, parent_dir_inode, filename, INODE_DIRECTORY, dir_inode) < 0) {
         return -1;
     }
 
-    // Split string on "/"
-    char* part;
-    part = strtok(path, "/");
+    file_link_t current_dir;
+    current_dir.inode_id = dir_inode->id;
+    current_dir.filename = ".";
 
-    // Until path is empty
-    while(part != NULL) {
-        if (filename_to_inode(superblock, current_dir_inode, part, temp_inode) < 0) {
-            return -1;
+    file_link_t parent_dir;
+    parent_dir.inode_id = parent_dir_inode->id;
+    parent_dir.filename = "..";
+
+    directory_t* dir;
+    dir->links[0] = current_dir;
+    dir->links[1] = parent_dir;
+    dir->files_count = 2;
+
+    return write_dir(superblock, dir_inode, dir);
+}
+
+// Delete a directory, only if empty
+int delete_dir(superblock_t* superblock, inode_t* parent_dir_inode, char* filename) {
+    // Retrive the directory
+    directory_t* dir;
+    filename_to_dir(superblock, parent_dir_inode, filename, dir)
+
+    // If dir not empty, error
+    // NOTE can have "." and ".."
+    if (!dir->files_count <= 2) {
+        return -1;
+    }
+
+    return delete_file(superblock, parent_dir_inode, filename);
+}
+
+// Deletes a file link from a directory
+int delete_file_link(directory_t* dir, char* filename) {
+    // Search directory
+    int index = -1;
+    for (int i=0; i<dir->files_count; i++) {
+        if (strcmp(filename, dir->links[i].filename) == 0) { // Found match
+            index = i;
+            break;
         }
+    }
 
-        part = strtok(NULL, "/");
+    // File not in directory
+    if (index == -1) {
+        return -1;
+    }
 
-        // If we get another directory, continue otherwise if its a file stop
-        if (temp_inode->type == INODE_DIRECTORY) {
-            current_dir = temp_inode;
-            continue;
-        } else if (temp_inode->type == INODE_FILE) {
-            if (part == NULL) {
-                inode = temp_inode;
-                return 0;
-            } else { // Found file however still path left, therefore error
-                return -1;
-            }
-        } else { // unknown file type
-            return -1;
+    // Update number of files in the directory
+    dir->files_count--;
+
+    // Shift array left one, therefore deleting the file
+    memmove(&dir->links[index+1], &dir->links[index], (dir->files_count-index) * sizeof(file_link_t));
+
+    return 0;
+}
+
+// Returns inode id of filename if exists in the directory
+int directory_lookup(superblock_t* superblock, inode_t* dir_inode, char* filename) {
+    // Read the directory
+    uint32_t file_pointer = 0;
+    directory_t* dir;
+    if (read_from_inode(superblock, dir_inode, &file_pointer, (uint8_t*)dir, sizeof(directory_t)) < 0) {
+        return -1;
+    }
+
+    // Search files
+    for (int i=0; i<dir->files_count; i++) {
+        if (strcmp(filename, dir->links[i].filename) == 0) { // Found match
+            return dir->links[i].inode_id;
         }
     }
 
     return -1;
 }
+
+/******************************************************
+ * File Descriptor Operations
+ ******************************************************/
 
 int add_fd(superblock_t* superblock, file_descriptor_table_t* fdtable, inode_t* inode, int flags) {
     // Check we can open more files
@@ -504,23 +418,85 @@ int add_fd(superblock_t* superblock, file_descriptor_table_t* fdtable, inode_t* 
 
     // Check the file is not already open
     for (int i=0; i < fdtable->count; i++) {
-        if (fdtable->open[i]->inode_id == inode->id) {
+        if (fdtable->open[i].inode_id == inode->id) {
             return -1;
         }
     }
 
     // Create a new file descriptor
     file_descriptor_t file_descriptor;
-    file_descriptor->id = fdtable->count;
-    file_descriptor->flags = flags;
-    file_descriptor->inode_id = inode->id;
+    file_descriptor.id = fdtable->count;
+    file_descriptor.flags = flags;
+    file_descriptor.inode_id = inode->id;
 
     // Add to table and update the count
-    fdtable->open[file_descriptor->id] = file_descriptor;
+    fdtable->open[file_descriptor.id] = file_descriptor;
     fdtable->count++;
 
-    return file_descriptor->id;
+    return file_descriptor.id;
 }
+
+/******************************************************
+ * File operations
+ ******************************************************/
+
+ // Delete a file
+ int delete_file(superblock_t* superblock, inode_t* dir_inode, char* filename) {
+     // Retrive the directory
+     directory_t* dir;
+     if (read_dir(superblock, dir_inode, dir) < 0) {
+         return -1;
+     }
+
+     // Read the inode, check for errors
+     inode_t* inode;
+     if (filename_to_inode(superblock, dir_inode, filename, inode) <0) {
+         return -1;
+     }
+
+     // Delete file link and check status
+     if (delete_file_link(dir, filename) < 0) {
+         return -1;
+     }
+
+     // Write the directory
+     if (write_dir(superblock, dir_inode, dir) < 0) {
+         return -1;
+     }
+
+     // Finally delete
+     return delete_inode(superblock, inode);
+ }
+
+ // Create a new file
+ int create_file(superblock_t* superblock, inode_t* dir_inode, char* filename, int type, inode_t* inode) {
+     // Retrive the directory
+     directory_t* dir;
+     if (read_dir(superblock, dir_inode, dir) < 0) {
+         return -1;
+     }
+
+     // Check we are not already using that filename
+     if (directory_lookup(superblock, dir_inode, filename) < 0) {
+         return -1;
+     }
+
+     // Create a new inode
+     if (create_inode_type(superblock, inode, type) < 0) {
+         return -1;
+     }
+
+     // Create a new link
+     file_link_t file_link;
+     file_link.inode_id = inode->id;
+     strcpy(file_link.filename, filename);
+
+     // Update the directory
+     dir->links[dir->files_count] = file_link;
+     dir->files_count++;
+
+     return write_dir(superblock, dir_inode, dir);
+ }
 
 // Returns file descriptor id
 int open_file(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* dir, char* path, int flags) {
@@ -536,7 +512,7 @@ int close_file(superblock_t* superblock, file_descriptor_table_t* fdtable, int f
     // Check the file is not already open
     int index = -1;
     for (int i=0; i < fdtable->count; i++) {
-        if (fdtable->open[i]->id == file_descriptor_id) {
+        if (fdtable->open[i].id == file_descriptor_id) {
             index = i;
             break;
         }
@@ -556,27 +532,64 @@ int close_file(superblock_t* superblock, file_descriptor_table_t* fdtable, int f
     return 0;
 }
 
-// Returns inode from a file descriptor id, returns 0 on success
-int fdid_to_inode(superblock_t* superblock, file_descriptor_table_t* fdtable, int file_descriptor_id, inode_t* inode) {
-    file_descriptor_t* fd = fdid_to_fd(fdtable, file_descriptor_id);
+/******************************************************
+ * Disk Initialisation
+ ******************************************************/
 
-    // Failed to get file descriptor
-    if (fd == NULL) {
+// Create and write empty inodes, returns 0 for success, -1 for failure
+int init_inodes(superblock_t* superblock) {
+    for (int i=0; i<superblock->inode_num; i++) {
+        inode_t* inode;
+        new_inode(i, inode);
+        if (write_inode(superblock, inode) < 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+// Initiate the disk for the first time
+void init_disk(superblock_t* superblock, directory_t* root_dir) {
+    int status = 0;
+    new_superblock(superblock);
+    status |= write_superblock(superblock);
+    status |= init_inodes(superblock);
+    status |= create_root_directory(superblock, root_dir);
+    return status;
+}
+
+// Create root directory, "." and ".." point to the same location
+int create_root_directory(superblock_t* superblock, directory_t* root_dir) {
+    inode_t* dir_inode;
+    if (create_inode_type(superblock, dir_inode, INODE_DIRECTORY) < 0) {
         return -1;
     }
 
-    return read_inode(superblock, fd->inode_id, inode);
+    file_link_t current_dir;
+    file_link.inode_id = dir_inode->id;
+    file_link.filename = ".";
+
+    file_link_t parent_dir;
+    file_link.inode_id = dir_inode->id; // NOTE points to self
+    file_link.filename = "..";
+
+    root_dir->links[0] = current_dir;
+    root_dir->links[1] = parent_dir;
+    root_dir->files_count = 2;
+
+    uint32_t file_pointer = 0;
+    return write_dir(superblock, dir_inode, root_dir);
 }
 
-// Returns file descriptor from a file descriptor id
-file_descriptor_t* fdid_to_fd(file_descriptor_table_t* fdtable, int file_descriptor_id) {
-    for (int i=0; i < fdtable->count; i++) {
-        if (fdtable->open[i]->id == file_descriptor_id) {
-            return &fdtable->open[i];
-        }
+// Read the root dir
+int read_root_dir(superblock_t* superblock, directory_t* dir) {
+    inode_t* inode;
+    if (read_inode(superblock, 0, inode) < 0) { // NOTE Inode ID 0 is root dir
+        return -1;
     }
-    return NULL;
+    return read_dir(superblock, inode, dir);
 }
+
 
 // IO devices created on disk
 // NOTE this is not how it happens in reality however we don't have a file system in memory

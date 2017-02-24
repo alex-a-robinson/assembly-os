@@ -10,4 +10,8 @@ enum { BITS_PER_WORD = sizeof(word_t) * 32 };
 #define WORD_OFFSET(b) ((b) / BITS_PER_WORD)
 #define BIT_OFFSET(b)  ((b) % BITS_PER_WORD)
 
+void set_bit(word_t *words, int n);
+void clear_bit(word_t *words, int n);
+int get_bit(word_t *words, int n);
+
 #endif
