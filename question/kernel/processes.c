@@ -275,5 +275,5 @@ int proc_fd_open(pid_t pid, int file_descriptor_id) {
             return 1;
         }
     }
-    return 0;
+    return -1;
 }

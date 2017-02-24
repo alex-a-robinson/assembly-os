@@ -107,7 +107,7 @@ int sys_close(ctx_t* ctx, int fd) {
     return remove_fd(current->pid, fd);
 }
 
-int process_has_permission(int pid, int fdid) {
+int process_has_file_permission(int pid, int fdid, int mode) {
     file_descriptor_t* fd = fdid_to_fd(open_files, fdid);
 
     // FDID not in file descriptors table i.e. not open
@@ -116,27 +116,31 @@ int process_has_permission(int pid, int fdid) {
     }
 
     // Check if its open globaly
-    if (fd->flags == READ_GLOBAL || fd->flags == WRITE_GLOBAL) {
+    if ((mode == READ && fd->flags == READ_GLOBAL) ||
+            (mode == WRITE && fd->flags == WRITE_GLOBAL)) {
         return 1;
+    }
+
+    // File not open in the correct mode e.g. asking for READ but file is WRITE only
+    if ((fd->flags != READ_WRITE) && (fd->flags != mode)) {
+        return -1;
     }
 
     // Otherwise check if the process has it open
     return proc_fd_open(pd, fdid);
 }
 
-int sys_write(int fd, char* x, int n) {
-    // https://linux.die.net/man/2/kill, http://unix.stackexchange.com/questions/80044/how-signals-work-internally
-
-    current->priority.io_burst++;
-
-
-
+// Write to a device
+int write_device(int fd, char* x, int n) {
     // Convert file handler to QEMU devices
     PL011_t* device = UART1; // defult to error
     if (fd == STDOUT_FILENO) {
         device = UART0;
     } else if (fd == STDERR_FILENO) {
         device = UART1;
+    } else {
+        error("Unknown device\n");
+        return -1;
     }
 
     for (int i = 0; i < n; i++) {
@@ -145,14 +149,17 @@ int sys_write(int fd, char* x, int n) {
     return n;
 }
 
-int sys_read(int fd, char* x, int n) { // NOTE BLOCKING
-    // TODO use differnt file handlers
-
-    current->priority.io_burst++;
-
+// Read from a device
+int read_device(int fd, char* x, int n) {
+    // Convert file handler to QEMU devices
     PL011_t* device = UART1; // defult to error
+    if (fd == STDIN_FILENO) {
+        device = UART1;
+    } else {
+        error("Unknown device\n");
+        return -1;
+    }
 
-    // TODO test this works
     for (int i = 0; i < n; i++) {
         x[i] = PL011_getc(device, true);
 
@@ -161,5 +168,67 @@ int sys_read(int fd, char* x, int n) { // NOTE BLOCKING
             break;
         }
     }
+    return n;
+}
+
+int sys_write(int fd, char* x, int n) {
+    current->priority.io_burst++;
+
+    if (process_has_file_permission(current->pid, fd, WRITE) < 0) {
+        error("File not open\n");
+        return -1;
+    }
+
+    inode_t* inode;
+    if (fdid_to_inode(mounted, open_files, fd, inode) < 0) {
+        error("Failed to open\n");
+        return -1;
+    }
+
+    // If file is a device
+    if (inode->type == INODE_DEVICE) {
+        return write_device(fd, x, n);
+    } else if (inode->type != INODE_FILE) {
+        error("Cannot write to this type of file\n");
+        return -1;
+    }
+
+    uint32_t* file_pointer; // TODO not using at the moment
+    if (write_to_inode(mounted, inode, file_pointer, x, n) < 0) {
+        error("Failed to write\n");
+        return -1;
+    }
+
+    return n;
+}
+
+int sys_read(int fd, char* x, int n) { // NOTE BLOCKING
+    current->priority.io_burst++;
+
+    if (process_has_file_permission(current->pid, fd, READ) < 0) {
+        error("File not open\n");
+        return -1;
+    }
+
+    inode_t* inode;
+    if (fdid_to_inode(mounted, open_files, fd, inode) < 0) {
+        error("Failed to open\n");
+        return -1;
+    }
+
+    // If file is a device
+    if (inode->type == INODE_DEVICE) {
+        return read_device(fd, x, n);
+    } else if (inode->type != INODE_FILE) {
+        error("Cannot read this type of file\n");
+        return -1;
+    }
+
+    uint32_t* file_pointer; // TODO not using at the moment
+    if (read_from_inode(mounted, inode, file_pointer, x, n) < 0) {
+        error("Failed to read\n");
+        return -1;
+    }
+
     return n;
 }
