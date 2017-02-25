@@ -8,9 +8,9 @@
 #include "PL011.h"
 
 /* Each of the following functions adopts the same approach to
- * reporting success vs. failure, as indicated by the response 
+ * reporting success vs. failure, as indicated by the response
  * produced by the disk: they return an r st.
- * 
+ *
  * r <  0 means failure
  * r >= 0 means success
  *

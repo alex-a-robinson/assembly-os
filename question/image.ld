@@ -12,8 +12,8 @@ SECTIONS {
   /* allocate stack for irq mode     */
   .       = . + 0x00001000;
   tos_irq = .;
-  /* allocate stack for svc mode     */
-  .       = . + 0x00001000;
+  /* allocate stack for svc mode NOTE check this is not too much stack memory    */
+  .       = . + 0x00100000;
   tos_svc = .;
   /* allocate stack for P1           */
   .       = . + 0x00001000;

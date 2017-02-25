@@ -11,6 +11,14 @@ void gets(char* x, int n) {
     }
 }
 
+void _err(char* msg) {
+    PL011_t* device = UART1;
+    int n = strlen(msg);
+    for (int i = 0; i < n; i++) {
+        PL011_putc(device, *msg++, true);
+    }
+}
+
 /* Since we lack a *real* loader (as a result of lacking a storage
 * medium to store program images), the following approximates one:
 * given a program name, from the set of programs statically linked
@@ -48,6 +56,12 @@ void* load(char* x) {
 */
 
 void main_console() {
+    _err("test\n");
+
+    mount();
+
+    _err("Mounted\n");
+
     char* p, x[1024];
 
     while (1) {

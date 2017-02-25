@@ -1,9 +1,12 @@
 #include "file_system_calls.h"
 
 // NOTE simplification, this would be a mount table
-superblock_t* mounted = NULL;
-directory_t* root_dir = NULL;
-file_descriptor_table_t* open_files;
+superblock_t _mounted;
+superblock_t* mounted = &_mounted;
+directory_t _root_dir;
+directory_t* root_dir = &_root_dir;
+file_descriptor_table_t _open_files;
+file_descriptor_table_t* open_files = &_open_files;
 
 extern pcb_t* current;
 
@@ -13,12 +16,13 @@ int STDERR_FD = -1;
 
 // Mount a disk, NOTE hard coded device. Returns 0 on success
 int sys_mount() {
-    if (mounted != NULL) {
+    if (valid_superblock(mounted)) {
         error("Disk already mounted\n");
         return -1;
     }
 
     int status = read_superblock(mounted);
+
     if (!valid_superblock(mounted)) {
         status |= init_disk(mounted, root_dir);
         status |= create_io_devices(mounted, open_files, root_dir);
@@ -32,6 +36,8 @@ int sys_mount() {
         error("Error mounting disk\n");
         return -1;
     }
+
+    error("Mounted!\n"); // TODO remove
     return 0;
 }
 
@@ -98,7 +104,6 @@ int sys_open(char* path, int flags) {
 
 // Close file, -1 on error, 0 on success
 int sys_close(int fd) {
-
     // Open the file
     if (close_file(mounted, open_files, fd) < 0) {
         error("Failed to close file\n");
@@ -154,7 +159,7 @@ int write_device(int fd, char* x, int n) {
 // Read from a device
 int read_device(int fd, char* x, int n) {
     // Convert file handler to QEMU devices
-    PL011_t* device = UART1; // defult to error
+    PL011_t* device = UART1; // defult to error // TODO using the correct devices?
     if (fd == STDIN_FD) {
         device = UART1;
     } else {

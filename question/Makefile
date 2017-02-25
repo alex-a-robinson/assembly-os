@@ -9,8 +9,8 @@
  QEMU_PATH        = /usr/local/Cellar/qemu/2.8.0
  QEMU_GDB         =        127.0.0.1:1234
  QEMU_UART        = mon:stdio
- QEMU_UART        += telnet:127.0.0.1:1235,server # Changed from +=
- #QEMU_UART       += telnet:127.0.0.1:1236,server
+ QEMU_UART        += telnet:127.0.0.1:1235,server
+ QEMU_UART        += telnet:127.0.0.1:1236,server
  QEMU_DISPLAY     = -nographic -display none
 #QEMU_DISPLAY     =            -display  sdl
 

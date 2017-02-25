@@ -14,8 +14,12 @@
 #define MAX_INODE_BLOCKS 6
 
 // Super Block constants
-#define MAX_NUMBER_OF_BLOCKS 65536
+// TODO this should be 65536 as not using all the blocks
+// TODO max number of inodes should exclude blocks used for super block
+// TODO we don't use the blocks used by the inodes!
+#define MAX_NUMBER_OF_BLOCKS 16384
 #define MIN_BLOCK_LENGTH 16
+#define MAX_BLOCK_LEN 1024
 #define MAX_BLOCK_BITMAP_SIZE ((int) (MAX_NUMBER_OF_BLOCKS) / (BITS_PER_WORD))
 #define MAX_NUMBER_OF_INODES ((int) (MAX_NUMBER_OF_BLOCKS) / (MIN_BLOCK_LENGTH))
 #define MAX_INODE_BITMAP_SIZE ((int) (MAX_NUMBER_OF_INODES) / (BITS_PER_WORD))
@@ -85,10 +89,16 @@ typedef struct {
  * Functions
  ******************************************************/
 
+int disk_write(int block_len, uint32_t a, const uint8_t* x, int n);
+int disk_read(int block_len, uint32_t a, const uint8_t* x, int n);
+
 uint32_t blocks_occupied(int block_size, int bytes);
 void allocate_block(superblock_t* superblock, uint32_t addr);
 void unallocate_block(superblock_t* superblock, uint32_t addr);
 uint32_t free_data_block(superblock_t* superblock);
+int read_sequential_blocks(int block_size, uint32_t first_block_addr, uint8_t* data, int bytes);
+int write_sequential_blocks(int block_size, uint32_t first_block_addr, uint8_t* data, int bytes);
+
 
 int read_superblock(superblock_t* superblock);
 int valid_superblock(superblock_t* superblock);
@@ -109,7 +119,6 @@ int write_inode(superblock_t* superblock, inode_t* inode);
 int free_inode(superblock_t* superblock, inode_t* inode);
 int create_inode_type(superblock_t* superblock, inode_t* inode, int inode_type);
 int delete_inode(superblock_t* superblock, inode_t* inode);
-int _ro_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, uint8_t* bytes, int data_size, int read);
 int read_from_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, uint8_t* bytes, int data_size);
 int write_to_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, uint8_t* bytes, int data_size);
 
