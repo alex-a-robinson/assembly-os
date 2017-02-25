@@ -122,6 +122,10 @@ void new_superblock(superblock_t* superblock) {
     int block_len = disk_get_block_len();
     int inode_num = (int) block_num / MAX_INODE_BLOCKS;
 
+    if (inode_num > MAX_NUMBER_OF_INODES) {
+      inode_num = MAX_NUMBER_OF_INODES;
+    }
+
     // Block num where inodes & data blocks start
     uint32_t inode_start = blocks_occupied(block_len, sizeof(superblock_t));
     uint32_t data_block_start = blocks_occupied(block_len, sizeof(inode_t)) * inode_num + inode_start;
@@ -321,7 +325,7 @@ int _rw_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, 
     int bytes_to_read_or_write;
 
     // For each avalible block
-    for (int i=block_id+1; i<MAX_INODE_BLOCKS; i++) {
+    for (int i=block_id+1; i<inode->blocks_allocated; i++) {
         if (bytes_left < bytes_in_block) { // If fits all in one block
             bytes_to_read_or_write = bytes_left;
         } else { // Else read/write the entire block
@@ -655,6 +659,7 @@ int read_root_dir(superblock_t* superblock, directory_t* dir) {
 // NOTE this is not how it happens in reality however we don't have a file system in memory
 int create_io_devices(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* root_dir) {
     // Load root dir
+    // TODO debug from here, returning -1 for some reason
     inode_t root_dir_i;
     if (dir_to_inode(superblock, root_dir, &root_dir_i) < 0) {
         return -1;

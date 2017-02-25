@@ -6,7 +6,7 @@
  # DISK_BLOCK_NUM   = 16384
  # DISK_BLOCK_LEN   =    64
  DISK_BLOCK_NUM   = 65536
- DISK_BLOCK_LEN   =    16
+ DISK_BLOCK_LEN   =    2048
 
 # part 3: targets
 
