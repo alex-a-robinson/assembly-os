@@ -121,12 +121,12 @@ int write_to_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_poin
 
 int write_dir(superblock_t* superblock, directory_t* dir);
 int read_dir(superblock_t* superblock, inode_t* inode, directory_t* dir);
-int create_directory(superblock_t* superblock, directory_t* parent_dir, char* filename);
+int create_directory(superblock_t* superblock, directory_t* parent_dir, char* filename, directory_t* dir);
 //int delete_dir(superblock_t* superblock, inode_t* parent_dir_inode, char* filename);
 //int delete_file_link(directory_t* dir, char* filename);
 int directory_lookup(directory_t* dir_inode, char* filename);
 
-int add_fd(superblock_t* superblock, file_descriptor_table_t* fdtable, int* inode_id, int flags);
+int add_fd(superblock_t* superblock, file_descriptor_table_t* fdtable, int inode_id, int flags);
 
 
 //int delete_file(superblock_t* superblock, inode_t* dir_inode, char* filename);

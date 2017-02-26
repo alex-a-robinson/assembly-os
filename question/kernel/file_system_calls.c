@@ -14,8 +14,13 @@ int STDIN_FD = -1;
 int STDOUT_FD = -1;
 int STDERR_FD = -1;
 
+void init_open_files() {
+    memset(open_files, 0, sizeof(file_descriptor_table_t));
+}
+
 // Mount a disk, NOTE hard coded device. Returns 0 on success
 int sys_mount() {
+    init_open_files();
     if (valid_superblock(mounted)) {
         error("Disk already mounted\n");
         return -1;

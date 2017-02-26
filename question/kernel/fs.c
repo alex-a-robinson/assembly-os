@@ -186,6 +186,7 @@ void new_superblock(superblock_t* superblock) {
 int path_to_inode_id(superblock_t* superblock, directory_t* dir, char* path) {
     inode_t inode;
     directory_t current_dir;
+    memset(&current_dir, 0, sizeof(directory_t));
     memcpy(&current_dir, dir, sizeof(directory_t));
 
     // Split string on "/"
@@ -262,14 +263,19 @@ int write_inode(superblock_t* superblock, inode_t* inode) {
     return write_sequential_blocks(superblock, superblock->disk_block_length, addr, (uint8_t*)inode, sizeof(inode_t));
 }
 
-// Find the next free inode
-int free_inode(superblock_t* superblock, inode_t* inode) {
+int free_inode_id(superblock_t* superblock) {
     for (int id=0; id<superblock->inode_num; id++) {
         if (get_bit(superblock->free_inode_bitmap, id) == 0) {
-            return read_inode(superblock, id, inode);
+            return id;
         }
     }
     return -1;
+}
+
+// Find the next free inode
+int free_inode(superblock_t* superblock, inode_t* inode) {
+    int id = free_inode_id(superblock);
+    return read_inode(superblock, id, inode);
 }
 
 // Creates an inode with a specific type and returns the inode id
@@ -415,7 +421,10 @@ int write_dir(superblock_t* superblock, directory_t* dir) {
     read_inode(superblock, id, &inode);
 
     uint32_t file_pointer = 0;
-    return write_to_inode(superblock, &inode, &file_pointer, (uint8_t*)dir, sizeof(directory_t));
+    if (write_to_inode(superblock, &inode, &file_pointer, (uint8_t*)dir, sizeof(directory_t)) < 0) {
+        return -1;
+    }
+    return id;
 }
 
 // Read a directory to its inode
@@ -425,7 +434,7 @@ int read_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
 }
 
 // Create a directory
-int create_directory(superblock_t* superblock, directory_t* parent_dir, char* filename) {
+int create_directory(superblock_t* superblock, directory_t* parent_dir, char* filename, directory_t* dir) {
     int inode_id = create_file(superblock, parent_dir, filename, INODE_DIRECTORY);
     if (inode_id < 0) {
         return -1;
@@ -433,18 +442,19 @@ int create_directory(superblock_t* superblock, directory_t* parent_dir, char* fi
 
     file_link_t current_dir_link;
     current_dir_link.inode_id = inode_id;
+    memset(current_dir_link.filename, '\0', MAX_FILE_NAME_LENGTH);
     strcpy(current_dir_link.filename, ".");
 
     file_link_t parent_dir_link;
     parent_dir_link.inode_id = parent_dir->links[0].inode_id; // ID of "." entry in dir
+    memset(parent_dir_link.filename, '\0', MAX_FILE_NAME_LENGTH);
     strcpy(parent_dir_link.filename, "..");
 
-    directory_t dir;
-    dir.links[0] = current_dir_link;
-    dir.links[1] = parent_dir_link;
-    dir.files_count = 2;
+    dir->links[0] = current_dir_link;
+    dir->links[1] = parent_dir_link;
+    dir->files_count = 2;
 
-    return write_dir(superblock, &dir);
+    return write_dir(superblock, dir);
 }
 
 // // Delete a directory, only if empty
@@ -564,7 +574,12 @@ int add_fd(superblock_t* superblock, file_descriptor_table_t* fdtable, int inode
 // Create a new file, returns inode id
 int create_file(superblock_t* superblock, directory_t* dir, char* filename, int type) {
     // Check we are not already using that filename
-    if (directory_lookup(dir, filename) < 0) {
+    if (directory_lookup(dir, filename) >= 0) {
+        return -1;
+    }
+
+    // See if adding another file would be more then the allowed limit
+    if (dir->files_count+1 >= MAX_FILES_IN_DIRECTORY) {
         return -1;
     }
 
@@ -577,6 +592,7 @@ int create_file(superblock_t* superblock, directory_t* dir, char* filename, int 
     // Create a new link
     file_link_t file_link;
     file_link.inode_id = inode_id;
+    memset(file_link.filename, '\0', MAX_FILE_NAME_LENGTH);
     strcpy(file_link.filename, filename);
 
     // Update the directory
@@ -656,10 +672,12 @@ int create_root_directory(superblock_t* superblock, directory_t* root_dir) {
 
     file_link_t current_dir;
     current_dir.inode_id = inode_id;
+    memset(current_dir.filename, '\0', MAX_FILE_NAME_LENGTH);
     strcpy(current_dir.filename, ".");
 
     file_link_t parent_dir;
     parent_dir.inode_id = inode_id; // NOTE points to self
+    memset(parent_dir.filename, '\0', MAX_FILE_NAME_LENGTH);
     strcpy(parent_dir.filename, "..");
 
     root_dir->links[0] = current_dir;
@@ -682,18 +700,18 @@ int read_root_dir(superblock_t* superblock, directory_t* dir) {
 // IO devices created on disk
 // NOTE this is not how it happens in reality however we don't have a file system in memory
 int create_io_devices(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* root_dir) {
-    // Load root dir
-    // TODO debug from here, returning -1 for some reason
-
     // Create dev dir
-    if (create_directory(superblock, root_dir, "dev") < 0) {
+    directory_t dev_dir;
+    memset(&dev_dir, 0, sizeof(directory_t));
+    if (create_directory(superblock, root_dir, "dev", &dev_dir) < 0) {
         return -1;
     }
 
     // create each file
-    if ((create_file(superblock, root_dir, "stdin", INODE_DEVICE) < 0)
-    || (create_file(superblock, root_dir, "stdout", INODE_DEVICE) < 0)
-    || (create_file(superblock, root_dir, "stderr", INODE_DEVICE) < 0)) {
+    // TODO debug from here, returning -1 for some reason
+    if ((create_file(superblock, &dev_dir, "stdin", INODE_DEVICE) < 0)
+    || (create_file(superblock, &dev_dir, "stdout", INODE_DEVICE) < 0)
+    || (create_file(superblock, &dev_dir, "stderr", INODE_DEVICE) < 0)) {
         return -1;
     }
 
