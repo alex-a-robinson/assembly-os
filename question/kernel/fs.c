@@ -192,9 +192,13 @@ int path_to_inode_id(superblock_t* superblock, directory_t* dir, char* _path) {
     char path[MAX_PATH_LENGTH];
     strcpy(path, _path);
 
-
     // Split string on "/"
     char* part = strtok(path, "/");
+
+    // Expand to just "/" to "/."
+    if (part == NULL) {
+        part = ".";
+    }
 
     // Until path is empty & we have directories
     int inode_id = -1;

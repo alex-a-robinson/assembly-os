@@ -252,3 +252,43 @@ int sys_read(int fd, char* x, int n) { // NOTE BLOCKING
 
     return n;
 }
+
+int sys_ls(char* path, char* file_list) {
+    int inode_id = path_to_inode_id(mounted, root_dir, path);
+
+    if (inode_id < 0) {
+        return -1;
+    }
+
+    inode_t inode;
+    if (read_inode(mounted, inode_id, &inode) < 0) {
+        return -1;
+    }
+    directory_t dir;
+    if (read_dir(mounted, &inode, &dir) < 0) {
+        return -1;
+    }
+
+    for (int i=0; i < dir.files_count; i++) {
+        strcat(file_list, dir.links[i].filename);
+        strcat(file_list, "\n");
+    }
+
+    return 0;
+}
+
+int sys_stat(char* path, file_stat_t* file_info) {
+    int inode_id = path_to_inode_id(mounted, root_dir, path);
+    inode_t inode;
+
+    if (read_inode(mounted, inode_id, &inode) < 0) {
+        return -1;
+    }
+
+    file_info->type = inode.type;
+    file_info->size = inode.size;
+    file_info->creation_time = inode.creation_time;
+    file_info->modification_time = inode.modification_time;
+
+    return 0;
+}

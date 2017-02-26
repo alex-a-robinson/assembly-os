@@ -15,5 +15,7 @@ int write_device(int fd, char* x, int n);
 int read_device(int fd, char* x, int n);
 int sys_write(int fd, char* x, int n);
 int sys_read(int fd, char* x, int n);
+int sys_ls(char* path, char* file_list);
+int sys_stat(char* path, file_stat_t* file_info);
 
 #endif

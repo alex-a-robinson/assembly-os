@@ -296,6 +296,34 @@ int _waitp(int pid) {
     return r;
 }
 
+int ls(char* path, char* file_list) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 =  path
+    "mov r1, %3 \n" // assign r1 =    file_list
+    "svc %1     \n" // make system call SYS_LS
+    "mov %0, r0 \n" // assign r0 =    r
+    : "=r" (r)
+    : "I" (SYS_LS), "r" (path), "r" (file_list)
+    : "r0", "r1" );
+
+    return r;
+}
+
+int stat(char* path, file_stat_t* file_info) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 =  path
+    "mov r1, %3 \n" // assign r1 =    file_info
+    "svc %1     \n" // make system call SYS_STAT
+    "mov %0, r0 \n" // assign r0 =    r
+    : "=r" (r)
+    : "I" (SYS_STAT), "r" (path), "r" (file_info)
+    : "r0", "r1" );
+
+    return r;
+}
+
 // Wait non blocking to put in a wait request Note -1 is still waiting, -2 is error, other is exit status
 int waitpnb(int pid) {
     return _waitp(pid);

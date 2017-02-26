@@ -65,6 +65,13 @@ typedef struct {
 } inode_t;
 
 typedef struct {
+    int type;
+    int size;
+    uint32_t creation_time;
+    uint32_t modification_time;
+} file_stat_t;
+
+typedef struct {
     int inode_id;
     char filename[MAX_FILE_NAME_LENGTH];
 } file_link_t;
@@ -138,5 +145,7 @@ int init_disk(superblock_t* superblock, directory_t* root_dir);
 int create_root_directory(superblock_t* superblock, directory_t* root_dir);
 int read_root_dir(superblock_t* superblock, directory_t* dir);
 int create_io_devices(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* root_dir);
+
+int path_to_inode_id(superblock_t* superblock, directory_t* dir, char* _path);
 
 #endif

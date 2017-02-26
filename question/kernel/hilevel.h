@@ -22,6 +22,7 @@
 #include "processes.h"
 #include "scheduler.h"
 #include "system_calls.h"
+#include "file_system_calls.h"
 #include "utilities.h"
 
 #endif

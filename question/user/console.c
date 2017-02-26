@@ -55,12 +55,65 @@ void* load(char* x) {
 * 3. execute whatever steps the command dictates.
 */
 
+void cmd_ls(char* path) {
+    char file_list[MAX_PATH_LENGTH];
+    memset(file_list, 0, MAX_PATH_LENGTH);
+    if (ls(path, file_list) < 0) {
+        return;
+    }
+    _err(file_list);
+}
+
+void cmd_stat(char* path) {
+    file_stat_t file_info;
+    memset(&file_info, 0, sizeof(file_stat_t));
+    if (stat(path, &file_info) < 0) {
+        return;
+    }
+
+    _err("TYPE "); _err(file_info.type); _err("\n");
+    _err("TYPE "); _err(file_info.size); _err("\n");
+    _err("TYPE "); _err(file_info.creation_time); _err("\n");
+    _err("TYPE "); _err(file_info.modification_time); _err("\n");
+}
+
+void cmd_cd(char* cwd, char* path) {
+    char cwd_copy[MAX_PATH_LENGTH];
+    strcpy(cwd_copy, cwd);
+    if (path[0] == '/') { // Relative to root
+        strcpy(cwd_copy, path);
+    } else { // Otherwise append
+        strcat(cwd_copy, path);
+    }
+
+    // Append trailing slash
+    if (cwd_copy[strlen(cwd_copy)-1] != '/') {
+        strcat(cwd_copy, "/");
+    }
+
+    // Check type of result
+    file_stat_t file_info;
+    memset(&file_info, 0, sizeof(file_stat_t));
+    if (stat(cwd_copy, &file_info) < 0) {
+        _err("Failed to open "); _err(cwd_copy); _err("\n");
+        return;
+    }
+    if (file_info.type != INODE_DIRECTORY) {
+        _err("This is not a directory\n");
+        return;
+    }
+
+    // Finally copy into cwd
+    strcpy(cwd, cwd_copy);
+}
+
 void main_console() {
-    _err("test\n");
+    // Initilise the current working directory
+    char cwd[MAX_PATH_LENGTH];
+    memset(cwd, 0, MAX_PATH_LENGTH);
+    strcpy(cwd, "/");
 
     mount();
-
-    _err("Mounted\n");
 
     char* p, x[1024];
 
@@ -86,6 +139,27 @@ void main_console() {
         } else if (0 == strcmp(p, "ps")) {
             pid_t pid = atoi(strtok(NULL, " "));
             ps(pid);
+        } else if (0 == strcmp(p, "ls")) {
+            char* path = strtok(NULL, " ");
+            if (path == NULL) {
+                cmd_ls(cwd);
+            } else {
+                cmd_ls(path);
+            }
+        }  else if (0 == strcmp(p, "stat")) {
+            char* path = strtok(NULL, " ");
+            if (path == NULL) {
+                cmd_stat(cwd);
+            } else {
+                cmd_stat(path);
+            }
+        }  else if (0 == strcmp(p, "cd")) {
+            char* path = strtok(NULL, " ");
+            if (path == NULL) {
+                cmd_cd(cwd, "/");
+            } else {
+                cmd_cd(cwd, path);
+            }
         } else {
             err("unknown command\n");
         }

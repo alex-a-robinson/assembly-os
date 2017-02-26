@@ -177,6 +177,20 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             sys_fork_wait(ctx);
             break;
         }
+        case SYS_LS: {
+            char* path = (char*)(ctx->gpr[0]);
+            char* file_list = (char*)(ctx->gpr[1]);
+            int r = sys_ls(path, file_list);
+            ctx->gpr[0] = r;
+            break;
+        }
+        case SYS_STAT: {
+            char* path = (char*)(ctx->gpr[0]);
+            file_stat_t* file_info = (char*)(ctx->gpr[1]);
+            int r = sys_stat(path, file_info);
+            ctx->gpr[0] = r;
+            break;
+        }
         default: { // 0x?? => unknown/unsupported
             error("unknown/unsupported system call\n");
             break;

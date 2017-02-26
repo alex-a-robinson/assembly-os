@@ -42,6 +42,8 @@ typedef int pid_t;
 #define SYS_CLOSE     ( 0x15 )
 #define SYS_MOUNT     ( 0x16 )
 #define SYS_UNMOUNT   ( 0x17 )
+#define SYS_LS        ( 0x18 )
+#define SYS_STAT      ( 0x19 )
 
 #define SIG_TERM      ( 0x00 )
 #define SIG_QUIT      ( 0x01 )
@@ -54,6 +56,23 @@ typedef int pid_t;
 #define  STDIN_FILENO ( 0 )
 #define STDOUT_FILENO ( 1 )
 #define STDERR_FILENO ( 2 )
+
+#define MAX_PATH_LENGTH 1024
+#define MAX_FILE_NAME_LENGTH 100
+#define MAX_FILES_IN_DIRECTORY 10
+
+typedef struct {
+    int type;
+    int size;
+    uint32_t creation_time;
+    uint32_t modification_time;
+} file_stat_t;
+
+// inode types
+#define INODE_UNALLOCATED ( 0 )
+#define INODE_FILE        ( 1 )
+#define INODE_DIRECTORY   ( 2 )
+#define INODE_DEVICE      ( 3 )
 
 // convert ASCII string x into integer r
 extern int  atoi( char* x        );
@@ -98,5 +117,8 @@ void sleep(int t);
 int waitp(int pid);
 int waitpnb(int pid);
 int fork_wait();
+
+int ls(char* path, char* file_list);
+int stat(char* path, file_stat_t* file_info);
 
 #endif

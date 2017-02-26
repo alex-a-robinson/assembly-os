@@ -43,6 +43,8 @@
 #define SYS_CLOSE     ( 0x15 )
 #define SYS_MOUNT     ( 0x16 )
 #define SYS_UNMOUNT   ( 0x17 )
+#define SYS_LS        ( 0x18 )
+#define SYS_STAT      ( 0x19 )
 
 #define SIG_TERM      ( 0x00 )
 #define SIG_QUIT      ( 0x01 )
