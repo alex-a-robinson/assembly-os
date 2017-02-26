@@ -263,6 +263,16 @@ int write_inode(superblock_t* superblock, inode_t* inode) {
     return write_sequential_blocks(superblock, superblock->disk_block_length, addr, (uint8_t*)inode, sizeof(inode_t));
 }
 
+// Mark datablock as allocated
+void allocate_inode(superblock_t* superblock, uint32_t id) {
+    set_bit(superblock->free_inode_bitmap, id);
+}
+
+// Mark datablock as unallocated
+void unallocate_inode(superblock_t* superblock, uint32_t id) {
+    clear_bit(superblock->free_inode_bitmap, id);
+}
+
 int free_inode_id(superblock_t* superblock) {
     for (int id=0; id<superblock->inode_num; id++) {
         if (get_bit(superblock->free_inode_bitmap, id) == 0) {
@@ -289,7 +299,7 @@ int create_inode_type(superblock_t* superblock, int inode_type) {
     // TODO should start inode ids at 1 incase newly initilised inode is saved therefore overwritting current one
 
     // Mark allocated in superblock
-    set_bit(superblock->free_inode_bitmap, inode.id);
+    allocate_inode(superblock, inode.id);
 
     inode.type = inode_type;
     inode.creation_time = 1; // TODO
@@ -308,7 +318,7 @@ int delete_inode(superblock_t* superblock, inode_t* inode) {
     }
 
     // Mark unallocated in superblock inode bitmap
-    clear_bit(superblock->free_inode_bitmap, inode->id);
+    unallocate_inode(superblock, inode->id);
 
     // Reset inode
     new_inode(inode->id, inode);
