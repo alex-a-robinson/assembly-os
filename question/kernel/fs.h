@@ -20,10 +20,9 @@
 #define MAX_NUMBER_OF_BLOCKS 16384
 #define MIN_BLOCK_LENGTH 16
 #define MAX_BLOCK_LEN 1024
-#define MAX_BLOCK_BITMAP_SIZE ((int) (MAX_NUMBER_OF_BLOCKS) / (BITS_PER_WORD))
-//#define MAX_NUMBER_OF_INODES ((int) (MAX_NUMBER_OF_BLOCKS) / (MIN_BLOCK_LENGTH)) TODO
-#define MAX_NUMBER_OF_INODES ( 10 )
-#define MAX_INODE_BITMAP_SIZE ((int) (MAX_NUMBER_OF_INODES) / (BITS_PER_WORD))
+#define MAX_BLOCK_BITMAP_SIZE ((int) (MAX_NUMBER_OF_BLOCKS + BITS_PER_WORD - 1) / (BITS_PER_WORD))
+#define MAX_NUMBER_OF_INODES ((int) (MAX_NUMBER_OF_BLOCKS) / (MIN_BLOCK_LENGTH))
+#define MAX_INODE_BITMAP_SIZE ((int) (MAX_NUMBER_OF_INODES + BITS_PER_WORD - 1) / (BITS_PER_WORD))
 
 // inode types
 #define INODE_UNALLOCATED ( 0 )
@@ -50,9 +49,9 @@ typedef struct {
     int disk_block_length;
     int inode_num;
     uint32_t inode_start;
+    uint32_t free_inode_bitmap[MAX_INODE_BITMAP_SIZE]; // inode table?
     uint32_t data_block_start;
     uint32_t free_block_bitmap[MAX_BLOCK_BITMAP_SIZE];
-    uint32_t free_inode_bitmap[MAX_INODE_BITMAP_SIZE]; // inode table?
 } superblock_t;
 
 typedef struct {

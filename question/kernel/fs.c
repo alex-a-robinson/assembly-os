@@ -183,11 +183,15 @@ void new_superblock(superblock_t* superblock) {
 //  }
 
 // Returns inode id from path
-int path_to_inode_id(superblock_t* superblock, directory_t* dir, char* path) {
+int path_to_inode_id(superblock_t* superblock, directory_t* dir, char* _path) {
     inode_t inode;
     directory_t current_dir;
     memset(&current_dir, 0, sizeof(directory_t));
     memcpy(&current_dir, dir, sizeof(directory_t));
+
+    char path[MAX_PATH_LENGTH];
+    strcpy(path, _path);
+
 
     // Split string on "/"
     char* part = strtok(path, "/");
@@ -196,13 +200,13 @@ int path_to_inode_id(superblock_t* superblock, directory_t* dir, char* path) {
     int inode_id = -1;
     while(part != NULL) {
         inode_id = directory_lookup(&current_dir, part);
+        part = strtok(NULL, "/"); // Get next part
         read_inode(superblock, inode_id, &inode);
         if (inode.type == INODE_DIRECTORY) {
             read_dir(superblock, &inode, &current_dir);
         } else {
             break;
         }
-        part = strtok(path, "/");
     }
 
     // Error before we finished the path
@@ -291,9 +295,11 @@ int free_inode(superblock_t* superblock, inode_t* inode) {
 // Creates an inode with a specific type and returns the inode id
 int create_inode_type(superblock_t* superblock, int inode_type) {
     inode_t inode;
-    if (free_inode(superblock, &inode) < 0) {
+    int inode_id = free_inode_id(superblock);
+    if (inode_id < 0) {
         return -1;
     }
+    inode.id = inode_id;
 
     // TODO not seting bit properly so always going back to inode id 0
     // TODO should start inode ids at 1 incase newly initilised inode is saved therefore overwritting current one
@@ -592,7 +598,8 @@ int create_file(superblock_t* superblock, directory_t* dir, char* filename, int 
     }
 
     // See if adding another file would be more then the allowed limit
-    if (dir->files_count+1 >= MAX_FILES_IN_DIRECTORY) {
+    int index = dir->files_count;
+    if (index+1 >= MAX_FILES_IN_DIRECTORY) {
         return -1;
     }
 
@@ -605,11 +612,11 @@ int create_file(superblock_t* superblock, directory_t* dir, char* filename, int 
     // Create a new link
     file_link_t file_link;
     file_link.inode_id = inode_id;
-    memset(file_link.filename, '\0', MAX_FILE_NAME_LENGTH);
+    memset(file_link.filename, '\0', sizeof(char[MAX_FILE_NAME_LENGTH]));
     strcpy(file_link.filename, filename);
 
     // Update the directory
-    dir->links[dir->files_count] = file_link;
+    dir->links[index] = file_link; // Compiler optimisation error? dir->links[dir->files_count]
     dir->files_count++;
 
     if (write_dir(superblock, dir) < 0) {
@@ -622,6 +629,12 @@ int create_file(superblock_t* superblock, directory_t* dir, char* filename, int 
 // Returns file descriptor id
 int open_file(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* dir, char* path, int flags) {
     int inode_id = path_to_inode_id(superblock, dir, path);
+
+    // Check for errors
+    if (inode_id < 0) {
+        return -1;
+    }
+
     return add_fd(superblock, fdtable, inode_id, flags);
 }
 
@@ -678,6 +691,8 @@ int init_disk(superblock_t* superblock, directory_t* root_dir) {
 
 // Create root directory, "." and ".." point to the same location
 int create_root_directory(superblock_t* superblock, directory_t* root_dir) {
+    memset(root_dir, 0, sizeof(directory_t));
+
     int inode_id = create_inode_type(superblock, INODE_DIRECTORY);
     if (inode_id < 0) {
         return -1;

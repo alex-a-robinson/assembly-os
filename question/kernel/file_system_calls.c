@@ -1,10 +1,13 @@
 #include "file_system_calls.h"
 
 // NOTE simplification, this would be a mount table
+
 superblock_t _mounted;
 superblock_t* mounted = &_mounted;
+
 directory_t _root_dir;
 directory_t* root_dir = &_root_dir;
+
 file_descriptor_table_t _open_files;
 file_descriptor_table_t* open_files = &_open_files;
 
@@ -14,13 +17,15 @@ int STDIN_FD = -1;
 int STDOUT_FD = -1;
 int STDERR_FD = -1;
 
-void init_open_files() {
+void init_disk_globals() {
+    memset(mounted, 0, sizeof(superblock_t));
+    memset(root_dir, 0, sizeof(directory_t));
     memset(open_files, 0, sizeof(file_descriptor_table_t));
 }
 
 // Mount a disk, NOTE hard coded device. Returns 0 on success
 int sys_mount() {
-    init_open_files();
+    init_disk_globals();
     if (valid_superblock(mounted)) {
         error("Disk already mounted\n");
         return -1;
