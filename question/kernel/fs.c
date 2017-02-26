@@ -235,7 +235,7 @@ int fdid_to_inode(superblock_t* superblock, file_descriptor_table_t* fdtable, in
         return -1;
     }
 
-    return read_inode(superblock, fd->id, inode);
+    return read_inode(superblock, fd->inode_id, inode);
 }
 
 
