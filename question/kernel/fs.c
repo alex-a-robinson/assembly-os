@@ -285,6 +285,9 @@ int create_inode_type(superblock_t* superblock, int inode_type) {
         return -1;
     }
 
+    // TODO not seting bit properly so always going back to inode id 0
+    // TODO should start inode ids at 1 incase newly initilised inode is saved therefore overwritting current one
+
     // Mark allocated in superblock
     set_bit(superblock->free_inode_bitmap, inode.id);
 
