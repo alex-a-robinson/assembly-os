@@ -32,6 +32,9 @@ int sys_mount() {
 
     status |= open_io_devices();
 
+    write_superblock(mounted);
+
+
     if (status < 0) {
         error("Error mounting disk\n");
         return -1;
@@ -186,22 +189,22 @@ int sys_write(int fd, char* x, int n) {
         return -1;
     }
 
-    inode_t* inode;
-    if (fdid_to_inode(mounted, open_files, fd, inode) < 0) {
+    inode_t inode;
+    if (fdid_to_inode(mounted, open_files, fd, &inode) < 0) {
         error("Failed to open\n");
         return -1;
     }
 
     // If file is a device
-    if (inode->type == INODE_DEVICE) {
+    if (inode.type == INODE_DEVICE) {
         return write_device(fd, x, n);
-    } else if (inode->type != INODE_FILE) {
+    } else if (inode.type != INODE_FILE) {
         error("Cannot write to this type of file\n");
         return -1;
     }
 
-    uint32_t* file_pointer; // TODO not using at the moment
-    if (write_to_inode(mounted, inode, file_pointer, x, n) < 0) {
+    uint32_t file_pointer = 0; // TODO not using at the moment
+    if (write_to_inode(mounted, &inode, &file_pointer, (uint8_t*)x, n) < 0) {
         error("Failed to write\n");
         return -1;
     }
@@ -217,22 +220,22 @@ int sys_read(int fd, char* x, int n) { // NOTE BLOCKING
         return -1;
     }
 
-    inode_t* inode;
-    if (fdid_to_inode(mounted, open_files, fd, inode) < 0) {
+    inode_t inode;
+    if (fdid_to_inode(mounted, open_files, fd, &inode) < 0) {
         error("Failed to open\n");
         return -1;
     }
 
     // If file is a device
-    if (inode->type == INODE_DEVICE) {
+    if (inode.type == INODE_DEVICE) {
         return read_device(fd, x, n);
-    } else if (inode->type != INODE_FILE) {
+    } else if (inode.type != INODE_FILE) {
         error("Cannot read this type of file\n");
         return -1;
     }
 
-    uint32_t* file_pointer; // TODO not using at the moment
-    if (read_from_inode(mounted, inode, file_pointer, x, n) < 0) {
+    uint32_t file_pointer = 0; // TODO not using at the moment
+    if (read_from_inode(mounted, &inode, &file_pointer, (uint8_t*)x, n) < 0) {
         error("Failed to read\n");
         return -1;
     }

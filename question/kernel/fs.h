@@ -58,8 +58,8 @@ typedef struct {
 typedef struct {
     int id;
     int type;
-    uint32_t size;
-    uint32_t blocks_allocated;
+    int size;
+    int blocks_allocated;
     uint32_t creation_time;
     uint32_t modification_time;
     uint32_t blocks[MAX_INODE_BLOCKS];
@@ -97,43 +97,40 @@ uint32_t blocks_occupied(int block_size, int bytes);
 void allocate_block(superblock_t* superblock, uint32_t addr);
 void unallocate_block(superblock_t* superblock, uint32_t addr);
 uint32_t free_data_block(superblock_t* superblock);
-int read_sequential_blocks(int block_size, uint32_t first_block_addr, uint8_t* data, int bytes);
-int write_sequential_blocks(int block_size, uint32_t first_block_addr, uint8_t* data, int bytes);
-
+int read_sequential_blocks(superblock_t* superblock, int block_size, uint32_t first_block_addr, uint8_t* data, int bytes);
+int write_sequential_blocks(superblock_t* superblock, int block_size, uint32_t first_block_addr, uint8_t* data, int bytes);
 
 int read_superblock(superblock_t* superblock);
 int valid_superblock(superblock_t* superblock);
 int write_superblock(superblock_t* superblock);
 void new_superblock(superblock_t* superblock);
 
-int dir_to_inode(superblock_t* superblock, directory_t* dir, inode_t* inode);
-int filename_to_inode(superblock_t* superblock, inode_t* dir_inode, char* filename, inode_t* inode);
-int filename_to_dir(superblock_t* superblock, inode_t* parent_dir_inode, char* filename, directory_t* dir);
-int path_to_inode(superblock_t* superblock, directory_t* dir, inode_t* inode, char* path);
+int path_to_inode(superblock_t* superblock, directory_t* dir, char* path);
 int fdid_to_inode(superblock_t* superblock, file_descriptor_table_t* fdtable, int file_descriptor_id, inode_t* inode);
 file_descriptor_t* fdid_to_fd(file_descriptor_table_t* fdtable, int file_descriptor_id);
 
- uint32_t id_to_addr(superblock_t* superblock, int id);
+uint32_t id_to_addr(superblock_t* superblock, int id);
 void new_inode(int id, inode_t* inode);
 int read_inode(superblock_t* superblock, int id, inode_t* inode);
 int write_inode(superblock_t* superblock, inode_t* inode);
 int free_inode(superblock_t* superblock, inode_t* inode);
-int create_inode_type(superblock_t* superblock, inode_t* inode, int inode_type);
+int create_inode_type(superblock_t* superblock, int inode_type);
 int delete_inode(superblock_t* superblock, inode_t* inode);
 int read_from_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, uint8_t* bytes, int data_size);
 int write_to_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, uint8_t* bytes, int data_size);
 
-int write_dir(superblock_t* superblock, inode_t* inode, directory_t* dir);
+int write_dir(superblock_t* superblock, directory_t* dir);
 int read_dir(superblock_t* superblock, inode_t* inode, directory_t* dir);
-int create_directory(superblock_t* superblock, inode_t* parent_dir_inode, inode_t* dir_inode, char* filename);
-int delete_dir(superblock_t* superblock, inode_t* parent_dir_inode, char* filename);
-int delete_file_link(directory_t* dir, char* filename);
-int directory_lookup(superblock_t* superblock, inode_t* dir_inode, char* filename);
+int create_directory(superblock_t* superblock, directory_t* parent_dir, char* filename);
+//int delete_dir(superblock_t* superblock, inode_t* parent_dir_inode, char* filename);
+//int delete_file_link(directory_t* dir, char* filename);
+int directory_lookup(directory_t* dir_inode, char* filename);
 
-int add_fd(superblock_t* superblock, file_descriptor_table_t* fdtable, inode_t* inode, int flags);
+int add_fd(superblock_t* superblock, file_descriptor_table_t* fdtable, int* inode_id, int flags);
 
-int delete_file(superblock_t* superblock, inode_t* dir_inode, char* filename);
-int create_file(superblock_t* superblock, inode_t* dir_inode, char* filename, int type, inode_t* inode);
+
+//int delete_file(superblock_t* superblock, inode_t* dir_inode, char* filename);
+int create_file(superblock_t* superblock, directory_t* dir, char* filename, int type);
 int open_file(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* dir, char* path, int flags);
 int close_file(superblock_t* superblock, file_descriptor_table_t* fdtable, int file_descriptor_id);
 
