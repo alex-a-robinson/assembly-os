@@ -87,8 +87,8 @@ typedef struct {
 } file_descriptor_table_t;
 
 /******************************************************
- * Functions
- ******************************************************/
+* Functions
+******************************************************/
 
 int disk_write(int block_len, uint32_t a, const uint8_t* x, int n);
 int disk_read(int block_len, uint32_t a, const uint8_t* x, int n);

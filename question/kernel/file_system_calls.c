@@ -127,7 +127,7 @@ int process_has_file_permission(int pid, int fdid, int mode) {
 
     // Check if its open globaly
     if ((mode == READ && fd->flags == READ_GLOBAL) ||
-            (mode == WRITE && fd->flags == WRITE_GLOBAL)) {
+    (mode == WRITE && fd->flags == WRITE_GLOBAL)) {
         return 1;
     }
 
