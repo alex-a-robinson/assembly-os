@@ -265,6 +265,7 @@ int sys_ls(char* path, char* file_list) {
     }
     directory_t dir;
     if (read_dir(mounted, &inode, &dir) < 0) {
+        error("This is not a directory\n");
         return -1;
     }
 
@@ -279,6 +280,11 @@ int sys_ls(char* path, char* file_list) {
 int sys_stat(char* path, file_stat_t* file_info) {
     int inode_id = path_to_inode_id(mounted, root_dir, path);
     inode_t inode;
+
+    if (inode_id < 0) {
+        error("No such file\n");
+        return -1;
+    }
 
     if (read_inode(mounted, inode_id, &inode) < 0) {
         return -1;

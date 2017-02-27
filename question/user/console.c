@@ -65,7 +65,23 @@ void* load(char* x) {
 * 3. execute whatever steps the command dictates.
 */
 
-int parse_cmd(char* input, char* cmd, char* args) {
+void path_from_args(char* args, char* path) {
+    if (strlen(args) != 0) {
+        if (args[0] == '/') { // Relative to root
+            strcpy(path, args);
+        } else { // Otherwise append
+            strcpy(path, cwd);
+            strcat(path, args);
+        }
+    } else {
+        strcpy(path, cwd);
+    }
+}
+
+int parse_cmd(char* _input, char* cmd, char* args) {
+    char input[1024];
+    strcpy(input, _input);
+
     char* first_word = strtok(input, " ");
     if (first_word == NULL) {
         return -1;
@@ -73,11 +89,11 @@ int parse_cmd(char* input, char* cmd, char* args) {
 
     strcpy(cmd, first_word);
 
-    if (strlen(cmd) + 1 >= strlen(input)) {
+    if (strlen(cmd) + 1 >= strlen(_input)) {
         return 0;
     }
 
-    memcpy(args, input + strlen(cmd) + 1, strlen(input) - strlen(cmd) - 1);
+    memcpy(args, _input + strlen(cmd) + 1, strlen(_input) - strlen(cmd) - 1);
 
     return 0;
 }
@@ -105,12 +121,8 @@ void cmd_ps(char* args) {
 }
 
 void cmd_ls(char* args) {
-    char path[MAX_PATH_LENGTH];
-    if (strlen(args) == 0) {
-        strcpy(path, args);
-    } else {
-        strcpy(path, cwd);
-    }
+    char path[100];
+    path_from_args(args, path);
 
     char file_list[MAX_PATH_LENGTH];
     memset(file_list, 0, MAX_PATH_LENGTH);
@@ -120,7 +132,10 @@ void cmd_ls(char* args) {
     _err(file_list);
 }
 
-void cmd_stat(char* path) {
+void cmd_stat(char* args) {
+    char path[100];
+    path_from_args(args, path);
+
     file_stat_t file_info;
     memset(&file_info, 0, sizeof(file_stat_t));
     if (stat(path, &file_info) < 0) {
@@ -136,13 +151,14 @@ void cmd_stat(char* path) {
 }
 
 void cmd_cd(char* path) {
-    char cwd_copy[MAX_PATH_LENGTH];
-    strcpy(cwd_copy, cwd);
-    if (path[0] == '/') { // Relative to root
-        strcpy(cwd_copy, path);
-    } else { // Otherwise append
-        strcat(cwd_copy, path);
+    // If no args, go to root
+    if (strlen(path) == 0) {
+        strcpy(cwd, "/");
+        return;
     }
+
+    char cwd_copy[MAX_PATH_LENGTH];
+    path_from_args(path, cwd_copy);
 
     // Append trailing slash
     if (cwd_copy[strlen(cwd_copy)-1] != '/') {
@@ -178,7 +194,7 @@ int handle_cmd(char* cmd, char* args) {
         cmd_stat(args);
     }  else if (strcmp(cmd, "cd") == 0) {
         cmd_cd(args);
-    } else if (strcmp(cmd, "exit") == 0) { // Exit
+    } else if (strcmp(cmd, "shutdown") == 0) { // Exit
         return -1;
     } else {
         err("unknown command\n");
@@ -193,12 +209,23 @@ void main_console() {
 
     mount();
 
-    char cmd[1024];
+    char cmd[100];
     char args[1024];
     char input[1024];
+    char prompt[100];
 
     while (1) {
-        write(STDERR_FILENO, "shell$ ", 7);
+        memset(cmd, 0, 100);
+        memset(args, 0, 1024);
+        memset(input, 0, 1024);
+        memset(prompt, 0, 100);
+
+        // Set the prompt
+        strcpy(prompt, cwd);
+        strcat(prompt, " $ ");
+
+        // Write the prompt
+        write(STDERR_FILENO, prompt, strlen(prompt));
         gets(input, 1024);
 
         if (parse_cmd(input, cmd, args) < 0) { // Continue if nothing entered

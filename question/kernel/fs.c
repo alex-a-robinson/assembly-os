@@ -259,6 +259,10 @@ void new_inode(int id, inode_t* inode) {
 
 // Read inode by inode id
 int read_inode(superblock_t* superblock, int id, inode_t* inode) {
+    if (id < 0) {
+        return -1;
+    }
+
     uint32_t addr = id_to_addr(superblock, id);
     return read_sequential_blocks(superblock, superblock->disk_block_length, addr, (uint8_t*)inode, sizeof(inode_t));
 }
@@ -422,6 +426,7 @@ int _rw_inode(superblock_t* superblock, inode_t* inode, uint32_t* file_pointer, 
     if (read) {
         return 0;
     } else {
+        inode->size = data_size;
         return write_inode(superblock, inode);
     }
 }
@@ -456,6 +461,10 @@ int write_dir(superblock_t* superblock, directory_t* dir) {
 
 // Read a directory to its inode
 int read_dir(superblock_t* superblock, inode_t* inode, directory_t* dir) {
+    if (inode->type != INODE_DIRECTORY) {
+        return -1;
+    }
+
     uint32_t file_pointer = 0;
     return read_from_inode(superblock, inode, &file_pointer, (uint8_t*)dir, sizeof(directory_t));
 }
