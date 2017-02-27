@@ -1,5 +1,7 @@
 #include "console.h"
 
+char cwd[MAX_PATH_LENGTH];
+
 void gets(char* x, int n) {
     for (int i = 0; i < n; i++) {
         x[i] = PL011_getc(UART1, true); // UART1?
@@ -63,7 +65,53 @@ void* load(char* x) {
 * 3. execute whatever steps the command dictates.
 */
 
-void cmd_ls(char* path) {
+int parse_cmd(char* input, char* cmd, char* args) {
+    char* first_word = strtok(input, " ");
+    if (first_word == NULL) {
+        return -1;
+    }
+
+    strcpy(cmd, first_word);
+
+    if (strlen(cmd) + 1 >= strlen(input)) {
+        return 0;
+    }
+
+    memcpy(args, input + strlen(cmd) + 1, strlen(input) - strlen(cmd) - 1);
+
+    return 0;
+}
+
+void cmd_fork(char* args) {
+    pid_t pid = fork();
+
+    if (0 == pid) {
+        char prog_args[1024];
+        char prog[1024];
+        parse_cmd(args, prog, prog_args);
+        void* addr = load(prog);
+        exec(addr, (uint32_t*)prog_args, 1);
+    }
+}
+void cmd_kill(char* args) {
+    pid_t pid = atoi(strtok(args, " "));
+    int s = atoi(strtok(NULL, " "));
+
+    kill(pid, s);
+}
+void cmd_ps(char* args) {
+    pid_t pid = atoi(strtok(args, " "));
+    ps(pid);
+}
+
+void cmd_ls(char* args) {
+    char path[MAX_PATH_LENGTH];
+    if (strlen(args) == 0) {
+        strcpy(path, args);
+    } else {
+        strcpy(path, cwd);
+    }
+
     char file_list[MAX_PATH_LENGTH];
     memset(file_list, 0, MAX_PATH_LENGTH);
     if (ls(path, file_list) < 0) {
@@ -81,13 +129,13 @@ void cmd_stat(char* path) {
 
     // TODO not priting the info
     char b[1024];
-    _err("TYPE "); _err(ss(b, file_info.type)); _err("\n");
-    _err("TYPE "); _err(ss(b, file_info.size)); _err("\n");
-    _err("TYPE "); _err(ss(b, file_info.creation_time)); _err("\n");
-    _err("TYPE "); _err(ss(b, file_info.modification_time)); _err("\n");
+    _err("Type: "); _err(ss(b, file_info.type)); _err("\n");
+    _err("Size (bytes): "); _err(ss(b, file_info.size)); _err("\n");
+    _err("Creation Time: "); _err(ss(b, file_info.creation_time)); _err("\n");
+    _err("Modification Time "); _err(ss(b, file_info.modification_time)); _err("\n");
 }
 
-void cmd_cd(char* cwd, char* path) {
+void cmd_cd(char* path) {
     char cwd_copy[MAX_PATH_LENGTH];
     strcpy(cwd_copy, cwd);
     if (path[0] == '/') { // Relative to root
@@ -117,65 +165,52 @@ void cmd_cd(char* cwd, char* path) {
     strcpy(cwd, cwd_copy);
 }
 
+int handle_cmd(char* cmd, char* args) {
+    if (strcmp(cmd, "fork") == 0) {
+        cmd_fork(args);
+    } else if (strcmp(cmd, "kill") == 0) {
+        cmd_kill(args);
+    } else if (strcmp(cmd, "ps") == 0) {
+        cmd_ps(args);
+    } else if (strcmp(cmd, "ls") == 0) {
+        cmd_ls(args);
+    }  else if (strcmp(cmd, "stat") == 0) {
+        cmd_stat(args);
+    }  else if (strcmp(cmd, "cd") == 0) {
+        cmd_cd(args);
+    } else if (strcmp(cmd, "exit") == 0) { // Exit
+        return -1;
+    } else {
+        err("unknown command\n");
+    }
+
+    return 0;
+}
+
 void main_console() {
     // Initilise the current working directory
-    char cwd[MAX_PATH_LENGTH];
-    memset(cwd, 0, MAX_PATH_LENGTH);
     strcpy(cwd, "/");
 
     mount();
 
-    char* p, x[1024];
+    char cmd[1024];
+    char args[1024];
+    char input[1024];
 
     while (1) {
-        //write("shell$ ", 7);
         write(STDERR_FILENO, "shell$ ", 7);
-        gets(x, 1024);
-        //read(STDIN_FILENO, x, 1024);
-        p = strtok(x, " ");
+        gets(input, 1024);
 
-        if (0 == strcmp(p, "fork")) {
-            pid_t pid = fork();
-
-            if (0 == pid) {
-                void* addr = load(strtok(NULL, " "));
-                exec(addr);
-            }
-        } else if (0 == strcmp(p, "kill")) {
-            pid_t pid = atoi(strtok(NULL, " "));
-            int s = atoi(strtok(NULL, " "));
-
-            kill(pid, s);
-        } else if (0 == strcmp(p, "ps")) {
-            pid_t pid = atoi(strtok(NULL, " "));
-            ps(pid);
-        } else if (0 == strcmp(p, "ls")) {
-            char* path = strtok(NULL, " ");
-            if (path == NULL) {
-                cmd_ls(cwd);
-            } else {
-                cmd_ls(path);
-            }
-        }  else if (0 == strcmp(p, "stat")) {
-            char* path = strtok(NULL, " ");
-            if (path == NULL) {
-                cmd_stat(cwd);
-            } else {
-                cmd_stat(path);
-            }
-        }  else if (0 == strcmp(p, "cd")) {
-            char* path = strtok(NULL, " ");
-            if (path == NULL) {
-                cmd_cd(cwd, "/");
-            } else {
-                cmd_cd(cwd, path);
-            }
-        } else if (p == NULL) {
-            continue; // Continue if no input
-        } else {
-            err("unknown command\n");
+        if (parse_cmd(input, cmd, args) < 0) { // Continue if nothing entered
+            continue;
+        }
+        if (handle_cmd(cmd, args) < 0) {
+            break;
         }
     }
+
+    err("System going down, bye!\n");
+    unmount();
 
     exit(EXIT_SUCCESS);
 }

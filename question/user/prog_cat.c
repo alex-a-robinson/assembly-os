@@ -1,6 +1,6 @@
 #include "prog_cat.h"
 
-void main_prog_cat_read() {
+void main_prog_cat_read(int x1, int x2, int x3, int x4) {
     int fd = open("/file.txt", READ);
 
     if (fd < 0) {

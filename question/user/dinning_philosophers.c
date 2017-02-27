@@ -123,7 +123,7 @@ void main_dp() {
     for (int i=0; i<PHILOSOPHERS; i++) {
         pid_t pid = fork_wait();
         if (0 == pid) {
-            exec(&philosopher);
+            exec(&philosopher, NULL, 0);
         } else {
             philosopher_pids[i] = pid;
         }

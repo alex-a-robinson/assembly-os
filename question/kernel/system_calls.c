@@ -112,7 +112,7 @@ void sys_yield(ctx_t* ctx) {
     return;
 }
 
-void sys_exec(ctx_t* ctx, void* x) {
+void sys_exec(ctx_t* ctx, void* x, uint32_t args[], int n) {
     // https://linux.die.net/man/3/exec
     // Reset current ctx, update pc to new program, and reload the ctx
     if (x == NULL) {
@@ -123,6 +123,12 @@ void sys_exec(ctx_t* ctx, void* x) {
 
     reset_ctx(&current->ctx, current->pid);
     current->ctx.pc = (uint32_t)(x);
+
+    // Load the arguments
+    for (int i=0; i<n; i++) {
+        current->ctx.gpr[i] = args[i];
+    }
+
     load_ctx(ctx);
     return;
 }

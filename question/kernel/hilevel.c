@@ -131,7 +131,9 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         }
         case SYS_EXEC: {
             void* x = (void*)(ctx->gpr[0]); // start executing program at address x e.g. &main_P3
-            sys_exec(ctx, x);
+            uint32_t* args = (uint32_t*)(ctx->gpr[1]);
+            int n = (int)(ctx->gpr[2]);
+            sys_exec(ctx, x, args, n);
             break;
         }
         case SYS_PS: {

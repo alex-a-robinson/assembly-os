@@ -17,7 +17,7 @@ void main_P5() {
     err("Starting P3\n");
     pid_t pid = fork();
     if (0 == pid) {
-        exec(&main_P3);
+        exec(&main_P3, NULL, 0);
     }
     err("Spawned P3\n");
     int r = waitp(pid);
