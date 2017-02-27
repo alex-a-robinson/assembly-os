@@ -1,6 +1,6 @@
 #include "console.h"
 
-char cwd[MAX_PATH_LENGTH];
+extern char CWD[MAX_PATH_LENGTH];
 
 void gets(char* x, int n) {
     for (int i = 0; i < n; i++) {
@@ -32,8 +32,8 @@ extern void main_P4();
 extern void main_P5();
 extern void main_dp();
 extern void main_TEST1();
-extern void main_prog_cat_read();
-extern void main_prog_cat_write();
+extern void main_prog_cat();
+extern void main_prog_vim();
 
 
 
@@ -48,10 +48,10 @@ void* load(char* x) {
         return &main_dp;
     } else if (0 == strcmp(x, "TEST1")) {
         return &main_TEST1;
-    } else if (0 == strcmp(x, "catw")) {
-        return &main_prog_cat_write;
-    } else if (0 == strcmp(x, "catr")) {
-        return &main_prog_cat_read;
+    } else if (0 == strcmp(x, "cat")) {
+        return &main_prog_cat;
+    } else if (0 == strcmp(x, "vim")) {
+        return &main_prog_vim;
     }
 
     return NULL;
@@ -65,44 +65,12 @@ void* load(char* x) {
 * 3. execute whatever steps the command dictates.
 */
 
-void path_from_args(char* args, char* path) {
-    if (strlen(args) != 0) {
-        if (args[0] == '/') { // Relative to root
-            strcpy(path, args);
-        } else { // Otherwise append
-            strcpy(path, cwd);
-            strcat(path, args);
-        }
-    } else {
-        strcpy(path, cwd);
-    }
-}
-
-int parse_cmd(char* _input, char* cmd, char* args) {
-    char input[1024];
-    strcpy(input, _input);
-
-    char* first_word = strtok(input, " ");
-    if (first_word == NULL) {
-        return -1;
-    }
-
-    strcpy(cmd, first_word);
-
-    if (strlen(cmd) + 1 >= strlen(_input)) {
-        return 0;
-    }
-
-    memcpy(args, _input + strlen(cmd) + 1, strlen(_input) - strlen(cmd) - 1);
-
-    return 0;
-}
-
 void cmd_fork(char* args) {
     pid_t pid = fork();
 
     if (0 == pid) {
         char prog_args[100];
+        memset(prog_args, 0, 100);
         char prog[100];
         parse_cmd(args, prog, prog_args);
         void* addr = load(prog);
@@ -122,7 +90,7 @@ void cmd_ps(char* args) {
 
 void cmd_ls(char* args) {
     char path[100];
-    path_from_args(args, path);
+    path_from_args(CWD, args, path);
 
     char file_list[MAX_PATH_LENGTH];
     memset(file_list, 0, MAX_PATH_LENGTH);
@@ -134,7 +102,7 @@ void cmd_ls(char* args) {
 
 void cmd_stat(char* args) {
     char path[100];
-    path_from_args(args, path);
+    path_from_args(CWD, args, path);
 
     file_stat_t file_info;
     memset(&file_info, 0, sizeof(file_stat_t));
@@ -153,23 +121,23 @@ void cmd_stat(char* args) {
 void cmd_cd(char* path) {
     // If no args, go to root
     if (strlen(path) == 0) {
-        strcpy(cwd, "/");
+        strcpy(CWD, "/");
         return;
     }
 
-    char cwd_copy[MAX_PATH_LENGTH];
-    path_from_args(path, cwd_copy);
+    char CWD_copy[MAX_PATH_LENGTH];
+    path_from_args(CWD, path, CWD_copy);
 
     // Append trailing slash
-    if (cwd_copy[strlen(cwd_copy)-1] != '/') {
-        strcat(cwd_copy, "/");
+    if (CWD_copy[strlen(CWD_copy)-1] != '/') {
+        strcat(CWD_copy, "/");
     }
 
     // Check type of result
     file_stat_t file_info;
     memset(&file_info, 0, sizeof(file_stat_t));
-    if (stat(cwd_copy, &file_info) < 0) {
-        _err("Failed to open "); _err(cwd_copy); _err("\n");
+    if (stat(CWD_copy, &file_info) < 0) {
+        _err("Failed to open "); _err(CWD_copy); _err("\n");
         return;
     }
     if (file_info.type != INODE_DIRECTORY) {
@@ -177,8 +145,44 @@ void cmd_cd(char* path) {
         return;
     }
 
-    // Finally copy into cwd
-    strcpy(cwd, cwd_copy);
+    // Finally copy into CWD
+    strcpy(CWD, CWD_copy);
+}
+
+// NOTE simplification over real system which alters the file descriptors
+int cmd_write(char* args) {
+    char filename[MAX_FILE_NAME_LENGTH];
+    char text[1024];
+    memset(text, 0, 1024);
+
+    if (parse_cmd(args, filename, text) < 0) {
+        err("Incorrect args, write <filename> <text>\n");
+        return -1;
+    }
+
+    char path[MAX_PATH_LENGTH];
+    path_from_args(CWD, filename, path);
+
+    int fd = open(path, WRITE);
+    if (fd < 0) {
+        err("Failed to open file\n");
+        return -1;
+    }
+
+    if (write(fd, text, strlen(text)) < 0) {
+        err("Failed to write to file\n");
+        return -1;
+    }
+
+    if (close(fd) < 0) {
+        err("Failed to close file\n");
+        return -1;
+    }
+    return 0;
+}
+
+void cmd_echo(char* args) {
+    write(STDOUT_FILENO, args, strlen(args));
 }
 
 int handle_cmd(char* cmd, char* args) {
@@ -196,7 +200,11 @@ int handle_cmd(char* cmd, char* args) {
         cmd_cd(args);
     } else if (strcmp(cmd, "shutdown") == 0) { // Exit
         return -1;
-    } else {
+    } else if (strcmp(cmd, "echo") == 0) {
+        cmd_echo(args);
+    } else if (strcmp(cmd, "write") == 0) {
+        cmd_write(args);
+    }else {
         err("unknown command\n");
     }
 
@@ -205,7 +213,7 @@ int handle_cmd(char* cmd, char* args) {
 
 void main_console() {
     // Initilise the current working directory
-    strcpy(cwd, "/");
+    strcpy(CWD, "/");
 
     mount();
 
@@ -221,7 +229,7 @@ void main_console() {
         memset(prompt, 0, 100);
 
         // Set the prompt
-        strcpy(prompt, cwd);
+        strcpy(prompt, CWD);
         strcat(prompt, " $ ");
 
         // Write the prompt

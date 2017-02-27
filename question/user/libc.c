@@ -372,3 +372,36 @@ void sleep(int t) {
     }
     return;
 }
+
+void path_from_args(char* working_dir, char* args, char* path) {
+    if (strlen(args) != 0) {
+        if (args[0] == '/') { // Relative to root
+            strcpy(path, args);
+        } else { // Otherwise append
+            strcpy(path, working_dir);
+            strcat(path, args);
+        }
+    } else {
+        strcpy(path, working_dir);
+    }
+}
+
+int parse_cmd(char* _input, char* cmd, char* args) {
+    char input[1024];
+    strcpy(input, _input);
+
+    char* first_word = strtok(input, " ");
+    if (first_word == NULL) {
+        return -1;
+    }
+
+    strcpy(cmd, first_word);
+
+    if (strlen(cmd) + 1 >= strlen(_input)) {
+        return 0;
+    }
+
+    memcpy(args, _input + strlen(cmd) + 1, strlen(_input) - strlen(cmd) - 1);
+
+    return 0;
+}

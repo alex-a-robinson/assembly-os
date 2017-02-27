@@ -126,4 +126,7 @@ int fork_wait();
 int ls(char* path, char* file_list);
 int stat(char* path, file_stat_t* file_info);
 
+int parse_cmd(char* _input, char* cmd, char* args);
+void path_from_args(char* working_dir, char* args, char* path);
+
 #endif

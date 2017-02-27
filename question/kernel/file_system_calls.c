@@ -106,6 +106,12 @@ int sys_open(char* path, int flags) {
         return -1;
     }
 
+    // Update root dir as may have changed if a new file has been added
+    if (read_root_dir(mounted, root_dir) < 0) {
+        error("Failed to read root dir\n");
+        return -1;
+    }
+
     // Add from process open files table & check for an error
     if (add_process_fd(current->pid, fd) < 0) {
         return -1;
