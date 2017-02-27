@@ -34,8 +34,7 @@ extern void main_dp();
 extern void main_TEST1();
 extern void main_prog_cat();
 extern void main_prog_vim();
-
-
+extern void main_prog_wc();
 
 void* load(char* x) {
     if (0 == strcmp(x, "P3")) {
@@ -52,6 +51,8 @@ void* load(char* x) {
         return &main_prog_cat;
     } else if (0 == strcmp(x, "vim")) {
         return &main_prog_vim;
+    } else if (0 == strcmp(x, "wc")) {
+        return &main_prog_wc;
     }
 
     return NULL;
@@ -204,7 +205,13 @@ int handle_cmd(char* cmd, char* args) {
         cmd_echo(args);
     } else if (strcmp(cmd, "write") == 0) {
         cmd_write(args);
-    }else {
+    } else if (load(cmd) != NULL) {
+        char _cmd[1024];
+        strcpy(_cmd, cmd);
+        strcat(_cmd, " ");
+        strcat(_cmd, args);
+        cmd_fork(_cmd);
+    } else {
         err("unknown command\n");
     }
 

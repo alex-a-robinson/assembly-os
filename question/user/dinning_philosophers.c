@@ -123,7 +123,8 @@ void main_dp() {
     for (int i=0; i<PHILOSOPHERS; i++) {
         pid_t pid = fork_wait();
         if (0 == pid) {
-            exec(&philosopher, NULL, 0);
+            char* args = "";
+            exec(&philosopher, args);
         } else {
             philosopher_pids[i] = pid;
         }
@@ -135,7 +136,6 @@ void main_dp() {
         //err("Waiting for: "); err(ss(b, philosopher_pids[i])); err("\n");
         int r = waitp(philosopher_pids[i]);
         err("-Philosopher #"); err(ss(b,i));err(" ate "); err(ss(b,r)); err("\n");
-
     }
 
     // Unshare memory
