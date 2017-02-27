@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "libc.h"
+#include "lib/libc.h"
 
 #define PHILOSOPHERS 3
 

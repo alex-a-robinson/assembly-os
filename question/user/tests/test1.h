@@ -1,10 +1,10 @@
-#ifndef __PROG_CAT_H
-#define __PROG_CAT_H
+#ifndef __TEST1_H
+#define __TEST1_H
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#include "libc.h"
+#include "lib/libc.h"
 
 #endif

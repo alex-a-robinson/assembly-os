@@ -1,6 +1,9 @@
-#include "prog_cat.h"
+#include "cat.h"
 
 void main_prog_cat(char* args) {
+    char path[MAX_PATH_LENGTH];
+    path_from_args(CWD, args, path);
+
     int fd = open(args, READ);
 
     if (fd < 0) {
@@ -20,7 +23,7 @@ void main_prog_cat(char* args) {
         exit(EXIT_FAILURE);
     }
 
-    err(text);
+    puts(text);
 
     exit(EXIT_SUCCESS);
 }

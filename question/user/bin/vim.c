@@ -1,7 +1,5 @@
 #include "vim.h"
 
-extern char CWD[1024];
-
 void main_prog_vim(char* args) {
     char filename[MAX_FILE_NAME_LENGTH];
     char text[1024];
@@ -10,6 +8,11 @@ void main_prog_vim(char* args) {
     if (parse_cmd(args, filename, text) < 0) {
         err("Incorrect args, vim <filename> <text>\n");
         exit(EXIT_FAILURE);
+    }
+
+    // If no text get input from the user
+    if (strlen(text) == 0) {
+        read(STDIN_FILENO, text, 1024);
     }
 
     char path[MAX_PATH_LENGTH];

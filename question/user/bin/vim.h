@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "libc.h"
-#include "env.h"
+#include "lib/libc.h"
+#include "lib/env.h"
 
 #endif

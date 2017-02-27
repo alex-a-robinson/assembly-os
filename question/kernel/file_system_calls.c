@@ -188,8 +188,7 @@ int read_device(int fd, char* x, int n) {
     for (int i = 0; i < n; i++) {
         x[i] = PL011_getc(device, true);
 
-        if (x[i] == '\x0A') {
-            x[i] = '\x00';
+        if (x[i] == '\x1B') { // Escape
             break;
         }
     }

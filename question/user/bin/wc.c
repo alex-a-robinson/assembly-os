@@ -1,7 +1,5 @@
 #include "wc.h"
 
-extern char CWD[1024];
-
 void main_prog_wc(char* args) {
     char path[1024];
     char text[1024];
@@ -31,7 +29,7 @@ void main_prog_wc(char* args) {
         exit(EXIT_FAILURE);
     }
 
-    int count = 1;
+    int count = 0;
     char* a = strtok(text, "\n");
     while(a != NULL) {
         a = strtok(NULL, "\n");
@@ -42,7 +40,7 @@ void main_prog_wc(char* args) {
     char b[10];
     ss(b, count);
 
-    write(STDERR_FILENO, b, strlen(b));
+    puts(b);
 
     exit(EXIT_SUCCESS);
 }

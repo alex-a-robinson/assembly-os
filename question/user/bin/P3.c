@@ -18,7 +18,7 @@ void main_P3(char* args) {
     err(args);
 
     for( int i = 0; i < 8; i++ ) { // TODO 50
-        write( STDOUT_FILENO, "P3", 2 );
+        puts("P3");
 
         uint32_t lo = 1 <<  8;
         uint32_t hi = 1 << 16;

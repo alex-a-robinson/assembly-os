@@ -1,7 +1,5 @@
 #include "console.h"
 
-extern char CWD[MAX_PATH_LENGTH];
-
 void gets(char* x, int n) {
     for (int i = 0; i < n; i++) {
         x[i] = PL011_getc(UART1, true); // UART1?
@@ -148,38 +146,6 @@ void cmd_cd(char* path) {
 
     // Finally copy into CWD
     strcpy(CWD, CWD_copy);
-}
-
-// NOTE simplification over real system which alters the file descriptors
-int cmd_write(char* args) {
-    char filename[MAX_FILE_NAME_LENGTH];
-    char text[1024];
-    memset(text, 0, 1024);
-
-    if (parse_cmd(args, filename, text) < 0) {
-        err("Incorrect args, write <filename> <text>\n");
-        return -1;
-    }
-
-    char path[MAX_PATH_LENGTH];
-    path_from_args(CWD, filename, path);
-
-    int fd = open(path, WRITE);
-    if (fd < 0) {
-        err("Failed to open file\n");
-        return -1;
-    }
-
-    if (write(fd, text, strlen(text)) < 0) {
-        err("Failed to write to file\n");
-        return -1;
-    }
-
-    if (close(fd) < 0) {
-        err("Failed to close file\n");
-        return -1;
-    }
-    return 0;
 }
 
 void cmd_echo(char* args) {

@@ -1,10 +1,10 @@
-#ifndef __TEST1_H
-#define __TEST1_H
+#ifndef __P3_H
+#define __P3_H
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#include "libc.h"
+#include "lib/libc.h"
 
 #endif
