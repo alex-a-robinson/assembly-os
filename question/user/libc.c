@@ -198,14 +198,13 @@ void exit( int x ) {
     return;
 }
 
-void exec( const void* x , uint32_t args[], int n) {
+void exec( const void* x , char* args) {
     asm volatile( "mov r0, %1 \n" // assign r0 = x
-    "mov r0, %2 \n" // assign r2 = args
-    "mov r0, %3 \n" // assign r3 = n
+    "mov r1, %2 \n" // assign r2 = args
     "svc %0     \n" // make system call SYS_EXEC
     :
-    : "I" (SYS_EXEC), "r" (x), "r" (args), "r" (n)
-    : "r0", "r1", "r2" );
+    : "I" (SYS_EXEC), "r" (x), "r" (args)
+    : "r0", "r1" );
 
     return;
 }

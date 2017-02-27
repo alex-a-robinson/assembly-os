@@ -102,11 +102,11 @@ void cmd_fork(char* args) {
     pid_t pid = fork();
 
     if (0 == pid) {
-        char prog_args[1024];
-        char prog[1024];
+        char prog_args[100];
+        char prog[100];
         parse_cmd(args, prog, prog_args);
         void* addr = load(prog);
-        exec(addr, (uint32_t*)prog_args, 1);
+        exec(addr, prog_args);
     }
 }
 void cmd_kill(char* args) {

@@ -131,9 +131,8 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         }
         case SYS_EXEC: {
             void* x = (void*)(ctx->gpr[0]); // start executing program at address x e.g. &main_P3
-            uint32_t* args = (uint32_t*)(ctx->gpr[1]);
-            int n = (int)(ctx->gpr[2]);
-            sys_exec(ctx, x, args, n);
+            char* args = (char*)(ctx->gpr[1]);
+            sys_exec(ctx, x, args);
             break;
         }
         case SYS_PS: {
@@ -188,7 +187,7 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         }
         case SYS_STAT: {
             char* path = (char*)(ctx->gpr[0]);
-            file_stat_t* file_info = (char*)(ctx->gpr[1]);
+            file_stat_t* file_info = (file_stat_t*)(ctx->gpr[1]);
             int r = sys_stat(path, file_info);
             ctx->gpr[0] = r;
             break;

@@ -107,7 +107,7 @@ extern int  fork();
 void ps(int pid);
 extern void exit(       int   x );
 // perform exec, i.e., start executing program at address x
-extern void exec( const void* x , uint32_t args[], int n);
+void exec( const void* x , char* args);
 
 // signal process identified by pid with signal x
 extern int  kill( pid_t pid, int x );

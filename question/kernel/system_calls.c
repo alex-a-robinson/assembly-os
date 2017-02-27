@@ -112,7 +112,7 @@ void sys_yield(ctx_t* ctx) {
     return;
 }
 
-void sys_exec(ctx_t* ctx, void* x, uint32_t args[], int n) {
+void sys_exec(ctx_t* ctx, void* x, char* args) {
     // https://linux.die.net/man/3/exec
     // Reset current ctx, update pc to new program, and reload the ctx
     if (x == NULL) {
@@ -125,9 +125,7 @@ void sys_exec(ctx_t* ctx, void* x, uint32_t args[], int n) {
     current->ctx.pc = (uint32_t)(x);
 
     // Load the arguments
-    for (int i=0; i<n; i++) {
-        current->ctx.gpr[i] = args[i];
-    }
+    current->ctx.gpr[0] = (uint32_t)args;
 
     load_ctx(ctx);
     return;
