@@ -30,6 +30,10 @@ extern void main_P4();
 extern void main_P5();
 extern void main_dp();
 extern void main_TEST1();
+extern void main_prog_cat_read();
+extern void main_prog_cat_write();
+
+
 
 void* load(char* x) {
     if (0 == strcmp(x, "P3")) {
@@ -42,6 +46,10 @@ void* load(char* x) {
         return &main_dp;
     } else if (0 == strcmp(x, "TEST1")) {
         return &main_TEST1;
+    } else if (0 == strcmp(x, "catw")) {
+        return &main_prog_cat_write;
+    } else if (0 == strcmp(x, "catr")) {
+        return &main_prog_cat_read;
     }
 
     return NULL;
@@ -71,10 +79,12 @@ void cmd_stat(char* path) {
         return;
     }
 
-    _err("TYPE "); _err(file_info.type); _err("\n");
-    _err("TYPE "); _err(file_info.size); _err("\n");
-    _err("TYPE "); _err(file_info.creation_time); _err("\n");
-    _err("TYPE "); _err(file_info.modification_time); _err("\n");
+    // TODO not priting the info
+    char b[1024];
+    _err("TYPE "); _err(ss(b, file_info.type)); _err("\n");
+    _err("TYPE "); _err(ss(b, file_info.size)); _err("\n");
+    _err("TYPE "); _err(ss(b, file_info.creation_time)); _err("\n");
+    _err("TYPE "); _err(ss(b, file_info.modification_time)); _err("\n");
 }
 
 void cmd_cd(char* cwd, char* path) {
@@ -160,6 +170,8 @@ void main_console() {
             } else {
                 cmd_cd(cwd, path);
             }
+        } else if (p == NULL) {
+            continue; // Continue if no input
         } else {
             err("unknown command\n");
         }

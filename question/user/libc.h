@@ -74,6 +74,11 @@ typedef struct {
 #define INODE_DIRECTORY   ( 2 )
 #define INODE_DEVICE      ( 3 )
 
+// File descriptors constants
+#define READ 0
+#define WRITE 1
+#define READ_WRITE 2
+
 // convert ASCII string x into integer r
 extern int  atoi( char* x        );
 // convert integer x into ASCII string r

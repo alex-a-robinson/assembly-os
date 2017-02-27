@@ -268,7 +268,11 @@ int read_inode(superblock_t* superblock, int id, inode_t* inode) {
 // Write inode
 int write_inode(superblock_t* superblock, inode_t* inode) {
     uint32_t addr = id_to_addr(superblock, inode->id);
-    return write_sequential_blocks(superblock, superblock->disk_block_length, addr, (uint8_t*)inode, sizeof(inode_t));
+    if (write_sequential_blocks(superblock, superblock->disk_block_length, addr, (uint8_t*)inode, sizeof(inode_t)) < 0) {
+        return -1;
+    }
+
+    return write_superblock(superblock);
 }
 
 // Mark datablock as allocated
@@ -630,13 +634,59 @@ int create_file(superblock_t* superblock, directory_t* dir, char* filename, int 
     return inode_id;
 }
 
-// Returns file descriptor id
-int open_file(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* dir, char* path, int flags) {
-    int inode_id = path_to_inode_id(superblock, dir, path);
-
-    // Check for errors
-    if (inode_id < 0) {
+int parse_filename(char* path, char* filename) {
+    // If path ends in "/" fail
+    if (path[strlen(path)-1] == '/') {
         return -1;
+    }
+
+    char previous_part[MAX_PATH_LENGTH];
+    strcpy(previous_part, path);
+
+    // Otherwise continue splitting until nothing left and take last item
+    char* part = strtok(path, "/");
+    while (part != NULL) {
+        strcpy(previous_part, part);
+        part = strtok(NULL, "/");
+    }
+
+    strcpy(filename, previous_part);
+    return 0;
+}
+
+// Returns file descriptor id
+int open_file(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* dir, char* path_and_filename, int flags) {
+    // Check the path is valid
+    char filename[MAX_FILE_NAME_LENGTH];
+    if (parse_filename(path_and_filename, filename) < 0) {
+        return -1;
+    }
+
+    char path[MAX_PATH_LENGTH];
+    strcpy(path, path_and_filename);
+    path[strlen(path) - strlen(filename)] = '\0';
+
+    directory_t dir_to_check;
+
+    if (strlen(path) == 0) {
+        memcpy(&dir_to_check, dir, sizeof(directory_t));
+    } else {
+        inode_t inode;
+        int dir_inode_id = path_to_inode_id(superblock, dir, path);
+        read_inode(superblock, dir_inode_id, &inode);
+        read_dir(superblock, &inode, &dir_to_check);
+    }
+
+    int inode_id = path_to_inode_id(superblock, &dir_to_check, filename);
+
+
+    // Check for errors, create a file if writing
+    if (inode_id < 0) {
+        if (flags == WRITE || flags == READ_WRITE || flags == WRITE_GLOBAL) {
+            inode_id = create_file(superblock, &dir_to_check, filename, INODE_FILE);
+        } else {
+            return -1;
+        }
     }
 
     return add_fd(superblock, fdtable, inode_id, flags);

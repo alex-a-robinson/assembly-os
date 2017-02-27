@@ -50,7 +50,6 @@ int sys_mount() {
         return -1;
     }
 
-    error("Mounted!\n"); // TODO remove
     return 0;
 }
 
