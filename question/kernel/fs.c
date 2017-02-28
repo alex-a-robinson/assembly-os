@@ -618,9 +618,11 @@ int create_file(superblock_t* superblock, directory_t* dir, char* filename, int 
     return inode_id;
 }
 
-int parse_filename(char* input, char* filename, char* path) {
+int parse_filename(char* _input, char* filename, char* path) {
+    char input[MAX_PATH_LENGTH];
+    strcpy(input, _input);
     // If input ends in "/" fail
-    if (input[strlen(path)-1] == '/') {
+    if (input[strlen(input)-1] == '/') {
         return -1;
     }
 
@@ -635,8 +637,8 @@ int parse_filename(char* input, char* filename, char* path) {
     }
 
     strcpy(filename, previous_part);
-    strcpy(path, input);
-    path[strlen(input) - strlen(filename)] = '\0';
+    strcpy(path, _input);
+    path[strlen(_input) - strlen(filename) - 1] = '\0';
 
     return 0;
 }
