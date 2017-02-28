@@ -192,6 +192,24 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
             ctx->gpr[0] = r;
             break;
         }
+        case SYS_RMDIR: {
+            char* path = (char*)(ctx->gpr[0]);
+            int r = sys_rmdir(path);
+            ctx->gpr[0] = r;
+            break;
+        }
+        case SYS_MKDIR: {
+            char* path = (char*)(ctx->gpr[0]);
+            int r = sys_mkdir(path);
+            ctx->gpr[0] = r;
+            break;
+        }
+        case SYS_RM: {
+            char* path = (char*)(ctx->gpr[0]);
+            int r = sys_rm(path);
+            ctx->gpr[0] = r;
+            break;
+        }
         default: { // 0x?? => unknown/unsupported
             error("unknown/unsupported system call\n");
             break;

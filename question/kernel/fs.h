@@ -134,6 +134,9 @@ int directory_lookup(directory_t* dir_inode, char* filename);
 
 int add_fd(superblock_t* superblock, file_descriptor_table_t* fdtable, int inode_id, int flags);
 
+int delete_file_link(directory_t* dir, char* filename);
+int parse_filename(char* input, char* filename, char* path);
+int delete_file(superblock_t* superblock, directory_t* dir, char* filename);
 
 //int delete_file(superblock_t* superblock, inode_t* dir_inode, char* filename);
 int create_file(superblock_t* superblock, directory_t* dir, char* filename, int type);

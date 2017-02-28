@@ -1,4 +1,4 @@
-#include "cat.h"
+#include "prog.h"
 
 void main_prog_cat(char* args) {
     char path[MAX_PATH_LENGTH];

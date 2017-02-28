@@ -16,7 +16,6 @@ void gets(char* x, int n) {
  *   - touch, rm
  *   - Dynamically allow programs using stack memeory
  *   - Fix phiiosophers
- *   - Make everything output to console
  *   - Clean up code
  *   - Write scheduler
  */
@@ -42,6 +41,9 @@ extern void main_prog_kill();
 extern void main_prog_ls();
 extern void main_prog_ps();
 extern void main_prog_stat();
+extern void main_prog_rm();
+extern void main_prog_rmdir();
+extern void main_prog_mkdir();
 
 prog_t progs[] = {
     {main_P3, "P3"},
@@ -58,7 +60,10 @@ prog_t progs[] = {
     {main_prog_kill, "kill"},
     {main_prog_ls, "ls"},
     {main_prog_ps, "ps"},
-    {main_prog_stat, "stat"}
+    {main_prog_stat, "stat"},
+    {main_prog_rm, "rm"},
+    {main_prog_rmdir, "rmdir"},
+    {main_prog_mkdir, "mkdir"}
 };
 
 void* load(char* x) {
@@ -108,7 +113,7 @@ int handle_cmd(char* input, char* cmd, char* args) {
     } else if (load(cmd) != NULL) {
         cmd_fork(input, 1);
     } else {
-        err("unknown command\n");
+        puts("unknown command\n");
     }
 
     return 0;
@@ -136,7 +141,7 @@ void main_console() {
         strcat(prompt, " $ ");
 
         // Write the prompt
-        write(STDERR_FILENO, prompt, strlen(prompt));
+        puts(prompt);
         gets(input, 1024);
 
         if (parse_cmd(input, cmd, args) < 0) { // Continue if nothing entered
@@ -147,7 +152,7 @@ void main_console() {
         }
     }
 
-    err("System going down, bye!\n");
+    puts("System going down, bye!\n");
     unmount();
 
     exit(EXIT_SUCCESS);

@@ -282,13 +282,13 @@ int sys_ls(char* path, char* file_list) {
 
 int sys_stat(char* path, file_stat_t* file_info) {
     int inode_id = path_to_inode_id(mounted, root_dir, path);
-    inode_t inode;
 
     if (inode_id < 0) {
         error("No such file\n");
         return -1;
     }
 
+    inode_t inode;
     if (read_inode(mounted, inode_id, &inode) < 0) {
         return -1;
     }
@@ -299,4 +299,123 @@ int sys_stat(char* path, file_stat_t* file_info) {
     file_info->modification_time = inode.modification_time;
 
     return 0;
+}
+
+// TODO check
+int sys_mkdir(char *path_and_filename) {
+    char filename[MAX_FILE_NAME_LENGTH];
+    char path[MAX_PATH_LENGTH];
+    if (parse_filename(path_and_filename, filename, path) < 0) {
+        error("Failed to parse path\n");
+        return -1;
+    }
+
+    directory_t parent_dir;
+    if (strlen(path) == 0) {
+        memcpy(&parent_dir, root_dir, sizeof(directory_t));
+    } else {
+        inode_t inode;
+        int dir_inode_id = path_to_inode_id(mounted, root_dir, path);
+        read_inode(mounted, dir_inode_id, &inode);
+        read_dir(mounted, &inode, &parent_dir);
+    }
+
+    // Create dir
+    directory_t dir;
+    memset(&dir, 0, sizeof(directory_t));
+    if (create_directory(mounted, &parent_dir, filename, &dir) < 0) {
+        error("Failed to write dir\n");
+        return -1;
+    }
+
+    // Update root dir as may have changed if a new file has been added
+    if (read_root_dir(mounted, root_dir) < 0) {
+        error("Failed to read root dir\n");
+        return -1;
+    }
+}
+
+// TODO check
+int sys_rmdir(char *path_and_filename) {
+    char filename[MAX_FILE_NAME_LENGTH];
+    char path[MAX_PATH_LENGTH];
+    if (parse_filename(path_and_filename, filename, path) < 0) {
+        error("Failed to parse path\n");
+        return -1;
+    }
+
+    inode_t inode;
+    directory_t parent_dir;
+    if (strlen(path) == 0) {
+        memcpy(&parent_dir, root_dir, sizeof(directory_t));
+    } else {
+        int dir_inode_id = path_to_inode_id(mounted, root_dir, path);
+        read_inode(mounted, dir_inode_id, &inode);
+        read_dir(mounted, &inode, &parent_dir);
+    }
+
+    directory_t dir_to_delete;
+    int inode_id = path_to_inode_id(mounted, &parent_dir, filename);
+    read_inode(mounted, inode_id, &inode);
+    if (read_dir(mounted, &inode, &dir_to_delete) < 0) {
+        error("File is not a directory\n");
+        return -1;
+    }
+
+    if (dir_to_delete.files_count > 2) {
+        error("Directory not empty\n");
+        return -1;
+    }
+
+    delete_file_link(&parent_dir, filename);
+    write_dir(mounted, &parent_dir);
+    return delete_inode(mounted, &inode);
+
+    if (delete_inode(mounted, &inode) < 0) {
+        error("Failed to delete inode\n");
+        return -1;
+    }
+
+    // Update root dir as may have changed if a new file has been added
+    if (read_root_dir(mounted, root_dir) < 0) {
+        error("Failed to read root dir\n");
+        return -1;
+    }
+
+}
+
+// TODO check these work
+int sys_rm(char *path_and_filename) {
+    char filename[MAX_FILE_NAME_LENGTH];
+    char path[MAX_PATH_LENGTH];
+    if (parse_filename(path_and_filename, filename, path) < 0) {
+        error("Failed to parse path\n");
+        return -1;
+    }
+
+    inode_t inode;
+    directory_t parent_dir;
+    if (strlen(path) == 0) {
+        memcpy(&parent_dir, root_dir, sizeof(directory_t));
+    } else {
+        int dir_inode_id = path_to_inode_id(mounted, root_dir, path);
+        read_inode(mounted, dir_inode_id, &inode);
+        read_dir(mounted, &inode, &parent_dir);
+    }
+
+    int inode_id = path_to_inode_id(mounted, &parent_dir, filename);
+    read_inode(mounted, inode_id, &inode);
+
+    delete_file_link(&parent_dir, filename);
+    write_dir(mounted, &parent_dir);
+    if (delete_inode(mounted, &inode) < 0) {
+        error("Failed to delete inode\n");
+        return -1;
+    }
+
+    // Update root dir as may have changed if a new file has been added
+    if (read_root_dir(mounted, root_dir) < 0) {
+        error("Failed to read root dir\n");
+        return -1;
+    }
 }

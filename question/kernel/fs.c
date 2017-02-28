@@ -512,29 +512,29 @@ int create_directory(superblock_t* superblock, directory_t* parent_dir, char* fi
 // }
 
 // Deletes a file link from a directory
-// int delete_file_link(directory_t* dir, char* filename) {
-//     // Search directory
-//     int index = -1;
-//     for (int i=0; i<dir->files_count; i++) {
-//         if (strcmp(filename, dir->links[i].filename) == 0) { // Found match
-//             index = i;
-//             break;
-//         }
-//     }
-//
-//     // File not in directory
-//     if (index == -1) {
-//         return -1;
-//     }
-//
-//     // Update number of files in the directory
-//     dir->files_count--;
-//
-//     // Shift array left one, therefore deleting the file
-//     memmove(&dir->links[index+1], &dir->links[index], (dir->files_count-index) * sizeof(file_link_t));
-//
-//     return 0;
-// }
+int delete_file_link(directory_t* dir, char* filename) {
+    // Search directory
+    int index = -1;
+    for (int i=0; i<dir->files_count; i++) {
+        if (strcmp(filename, dir->links[i].filename) == 0) { // Found match
+            index = i;
+            break;
+        }
+    }
+
+    // File not in directory
+    if (index == -1) {
+        return -1;
+    }
+
+    // Update number of files in the directory
+    dir->files_count--;
+
+    // Shift array left one, therefore deleting the file
+    memmove(&dir->links[index], &dir->links[index+1], (dir->files_count-index) * sizeof(file_link_t));
+
+    return 0;
+}
 
 // Returns inode id of filename if exists in the directory
 int directory_lookup(directory_t* dir, char* filename) {
@@ -582,31 +582,6 @@ int add_fd(superblock_t* superblock, file_descriptor_table_t* fdtable, int inode
 * File operations
 ******************************************************/
 
-// // Delete a file
-// int delete_file(superblock_t* superblock, directory_t* dir, char* filename) {
-//     inode_t dir_inode;
-//     dir_to_inode(superblock, dir, &dir_inode);
-//
-//     // Read the inode, check for errors
-//     inode_t inode;
-//     if (filename_to_inode(superblock, &dir_inode, filename, &inode) <0) {
-//         return -1;
-//     }
-//
-//     // Delete file link and check status
-//     if (delete_file_link(dir, filename) < 0) {
-//         return -1;
-//     }
-//
-//     // Write the directory
-//     if (write_dir(superblock, &dir_inode, dir) < 0) {
-//         return -1;
-//     }
-//
-//     // Finally delete
-//     return delete_inode(superblock, &inode);
-// }
-
 // Create a new file, returns inode id
 int create_file(superblock_t* superblock, directory_t* dir, char* filename, int type) {
     // Check we are not already using that filename
@@ -643,23 +618,26 @@ int create_file(superblock_t* superblock, directory_t* dir, char* filename, int 
     return inode_id;
 }
 
-int parse_filename(char* path, char* filename) {
-    // If path ends in "/" fail
-    if (path[strlen(path)-1] == '/') {
+int parse_filename(char* input, char* filename, char* path) {
+    // If input ends in "/" fail
+    if (input[strlen(path)-1] == '/') {
         return -1;
     }
 
     char previous_part[MAX_PATH_LENGTH];
-    strcpy(previous_part, path);
+    strcpy(previous_part, input);
 
     // Otherwise continue splitting until nothing left and take last item
-    char* part = strtok(path, "/");
+    char* part = strtok(input, "/");
     while (part != NULL) {
         strcpy(previous_part, part);
         part = strtok(NULL, "/");
     }
 
     strcpy(filename, previous_part);
+    strcpy(path, input);
+    path[strlen(input) - strlen(filename)] = '\0';
+
     return 0;
 }
 
@@ -669,13 +647,10 @@ int open_file(superblock_t* superblock, file_descriptor_table_t* fdtable, direct
 
     // TODO failes on wc /dev/../testing123.txt due to path parsing
     char filename[MAX_FILE_NAME_LENGTH];
-    if (parse_filename(path_and_filename, filename) < 0) {
+    char path[MAX_PATH_LENGTH];
+    if (parse_filename(path_and_filename, filename, path) < 0) {
         return -1;
     }
-
-    char path[MAX_PATH_LENGTH];
-    strcpy(path, path_and_filename);
-    path[strlen(path) - strlen(filename)] = '\0';
 
     directory_t dir_to_check;
 
@@ -723,7 +698,7 @@ int close_file(superblock_t* superblock, file_descriptor_table_t* fdtable, int f
     fdtable->count--;
 
     // Shift array left one, therefore deleting the file descriptor
-    memmove(&fdtable->open[index+1], &fdtable->open[index], (fdtable->count-index) * sizeof(file_descriptor_t));
+    memmove(&fdtable->open[index], &fdtable->open[index+1], (fdtable->count-index) * sizeof(file_descriptor_t));
 
     return 0;
 }

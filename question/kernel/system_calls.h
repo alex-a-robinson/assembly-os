@@ -45,6 +45,9 @@
 #define SYS_UNMOUNT   ( 0x17 )
 #define SYS_LS        ( 0x18 )
 #define SYS_STAT      ( 0x19 )
+#define SYS_MKDIR     ( 0x20 )
+#define SYS_RMDIR     ( 0x21 )
+#define SYS_RM        ( 0x22 )
 
 #define SIG_TERM      ( 0x00 )
 #define SIG_QUIT      ( 0x01 )

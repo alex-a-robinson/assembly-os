@@ -325,6 +325,45 @@ int stat(char* path, file_stat_t* file_info) {
     return r;
 }
 
+int mkdir(char* path) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 =  path
+    "svc %1     \n" // make system call SYS_MKDIR
+    "mov %0, r0 \n" // assign r0 =    r
+    : "=r" (r)
+    : "I" (SYS_MKDIR), "r" (path)
+    : "r0" );
+
+    return r;
+}
+
+int rmdir(char* path) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 =  path
+    "svc %1     \n" // make system call SYS_RMDIR
+    "mov %0, r0 \n" // assign r0 =    r
+    : "=r" (r)
+    : "I" (SYS_RMDIR), "r" (path)
+    : "r0" );
+
+    return r;
+}
+
+int rm(char* path) {
+    int r;
+
+    asm volatile( "mov r0, %2 \n" // assign r0 =  path
+    "svc %1     \n" // make system call SYS_RM
+    "mov %0, r0 \n" // assign r0 =    r
+    : "=r" (r)
+    : "I" (SYS_RM), "r" (path)
+    : "r0" );
+
+    return r;
+}
+
 // Wait non blocking to put in a wait request Note -1 is still waiting, -2 is error, other is exit status
 int waitpnb(int pid) {
     return _waitp(pid);

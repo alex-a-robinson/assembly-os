@@ -14,18 +14,18 @@ extern void main_P3();
 
 void main_P5() {
 
-    puts("Starting P3\n");
+    err("Starting P3\n");
     pid_t pid = fork();
     if (0 == pid) {
         exec(&main_P3, NULL);
     }
-    puts("Spawned P3\n");
+    err("Spawned P3\n");
     int r = waitp(pid);
     char b[1024];
     err("Returned with");err(ss(b,r));err("\n");
 
     while( 1 ) {
-        puts("P5");
+        err("P5");
 
         uint32_t lo = 1 <<  8;
         uint32_t hi = 1 << 24;

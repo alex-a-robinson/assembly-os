@@ -27,7 +27,7 @@ void main_prog_vima(char* args) {
         exit(EXIT_FAILURE);
     }
 
-    err(text_to_write);
+    puts(text_to_write);
 
     // If no text get input from the user
     if (strlen(text_read) == 0) {
