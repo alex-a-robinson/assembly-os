@@ -11,6 +11,16 @@ void gets(char* x, int n) {
     }
 }
 
+/* TODO
+ *   - mkdir, rmdir
+ *   - touch, rm
+ *   - Dynamically allow programs using stack memeory
+ *   - Fix phiiosophers
+ *   - Make everything output to console
+ *   - Clean up code
+ *   - Write scheduler
+ */
+
 /* Since we lack a *real* loader (as a result of lacking a storage
 * medium to store program images), the following approximates one:
 * given a program name, from the set of programs statically linked
