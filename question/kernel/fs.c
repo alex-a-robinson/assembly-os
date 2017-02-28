@@ -666,6 +666,8 @@ int parse_filename(char* path, char* filename) {
 // Returns file descriptor id
 int open_file(superblock_t* superblock, file_descriptor_table_t* fdtable, directory_t* dir, char* path_and_filename, int flags) {
     // Check the path is valid
+
+    // TODO failes on wc /dev/../testing123.txt due to path parsing
     char filename[MAX_FILE_NAME_LENGTH];
     if (parse_filename(path_and_filename, filename) < 0) {
         return -1;

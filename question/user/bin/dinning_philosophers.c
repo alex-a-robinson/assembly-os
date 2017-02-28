@@ -1,3 +1,4 @@
+#include "prog.h"
 #include "dinning_philosophers.h"
 
 /* TODO

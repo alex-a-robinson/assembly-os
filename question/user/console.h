@@ -12,4 +12,9 @@
 #include "lib/libc.h"
 #include "lib/env.h"
 
+typedef struct {
+    void* addr;
+    char name[100];
+} prog_t;
+
 #endif

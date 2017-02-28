@@ -1,4 +1,4 @@
-#include "wc.h"
+#include "prog.h"
 
 void main_prog_wc(char* args) {
     char path[1024];

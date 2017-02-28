@@ -94,8 +94,6 @@ int sys_unmount() {
 
 // Open a file, returns -1 on error otherwise the file descriptros id
 int sys_open(char* path, int flags) {
-    //char full_path[MAX_PATH_LENGTH];
-    //get_full_path(path, full_path);
 
     // Open the file
     int fd = open_file(mounted, open_files, root_dir, path, flags);

@@ -11,14 +11,6 @@ void gets(char* x, int n) {
     }
 }
 
-void _err(char* msg) {
-    PL011_t* device = UART1;
-    int n = strlen(msg);
-    for (int i = 0; i < n; i++) {
-        PL011_putc(device, *msg++, true);
-    }
-}
-
 /* Since we lack a *real* loader (as a result of lacking a storage
 * medium to store program images), the following approximates one:
 * given a program name, from the set of programs statically linked
@@ -32,27 +24,39 @@ extern void main_dp();
 extern void main_TEST1();
 extern void main_prog_cat();
 extern void main_prog_vim();
+extern void main_prog_vima();
 extern void main_prog_wc();
+extern void main_prog_echo();
+extern void main_prog_cd();
+extern void main_prog_kill();
+extern void main_prog_ls();
+extern void main_prog_ps();
+extern void main_prog_stat();
+
+prog_t progs[] = {
+    {main_P3, "P3"},
+    {main_P4, "P4"},
+    {main_P5, "P5"},
+    {main_dp, "DP"},
+    {main_TEST1, "test1"},
+    {main_prog_cat, "cat"},
+    {main_prog_vim, "vim"},
+    {main_prog_vima, "vima"},
+    {main_prog_wc, "wc"},
+    {main_prog_echo, "echo"},
+    {main_prog_cd, "cd"},
+    {main_prog_kill, "kill"},
+    {main_prog_ls, "ls"},
+    {main_prog_ps, "ps"},
+    {main_prog_stat, "stat"}
+};
 
 void* load(char* x) {
-    if (0 == strcmp(x, "P3")) {
-        return &main_P3;
-    } else if (0 == strcmp(x, "P4")) {
-        return &main_P4;
-    } else if (0 == strcmp(x, "P5")) {
-        return &main_P5;
-    } else if (0 == strcmp(x, "DP")) {
-        return &main_dp;
-    } else if (0 == strcmp(x, "TEST1")) {
-        return &main_TEST1;
-    } else if (0 == strcmp(x, "cat")) {
-        return &main_prog_cat;
-    } else if (0 == strcmp(x, "vim")) {
-        return &main_prog_vim;
-    } else if (0 == strcmp(x, "wc")) {
-        return &main_prog_wc;
+    for (int i=0; i < sizeof(progs)/sizeof(prog_t); i++) {
+        if (strcmp(progs[i].name, x) == 0) {
+            return progs[i].addr;
+        }
     }
-
     return NULL;
 }
 
@@ -64,8 +68,13 @@ void* load(char* x) {
 * 3. execute whatever steps the command dictates.
 */
 
-void cmd_fork(char* args) {
-    pid_t pid = fork();
+void cmd_fork(char* args, int wait) {
+    pid_t pid;
+    if (wait) {
+        pid = fork();
+    } else {
+        pid = fork_wait();
+    }
 
     if (0 == pid) {
         char prog_args[100];
@@ -75,108 +84,19 @@ void cmd_fork(char* args) {
         void* addr = load(prog);
         exec(addr, prog_args);
     }
-}
-void cmd_kill(char* args) {
-    pid_t pid = atoi(strtok(args, " "));
-    int s = atoi(strtok(NULL, " "));
 
-    kill(pid, s);
-}
-void cmd_ps(char* args) {
-    pid_t pid = atoi(strtok(args, " "));
-    ps(pid);
-}
-
-void cmd_ls(char* args) {
-    char path[100];
-    path_from_args(CWD, args, path);
-
-    char file_list[MAX_PATH_LENGTH];
-    memset(file_list, 0, MAX_PATH_LENGTH);
-    if (ls(path, file_list) < 0) {
-        return;
+    if (wait) {
+        waitp(pid);
     }
-    _err(file_list);
 }
 
-void cmd_stat(char* args) {
-    char path[100];
-    path_from_args(CWD, args, path);
-
-    file_stat_t file_info;
-    memset(&file_info, 0, sizeof(file_stat_t));
-    if (stat(path, &file_info) < 0) {
-        return;
-    }
-
-    // TODO not priting the info
-    char b[1024];
-    _err("Type: "); _err(ss(b, file_info.type)); _err("\n");
-    _err("Size (bytes): "); _err(ss(b, file_info.size)); _err("\n");
-    _err("Creation Time: "); _err(ss(b, file_info.creation_time)); _err("\n");
-    _err("Modification Time "); _err(ss(b, file_info.modification_time)); _err("\n");
-}
-
-void cmd_cd(char* path) {
-    // If no args, go to root
-    if (strlen(path) == 0) {
-        strcpy(CWD, "/");
-        return;
-    }
-
-    char CWD_copy[MAX_PATH_LENGTH];
-    path_from_args(CWD, path, CWD_copy);
-
-    // Append trailing slash
-    if (CWD_copy[strlen(CWD_copy)-1] != '/') {
-        strcat(CWD_copy, "/");
-    }
-
-    // Check type of result
-    file_stat_t file_info;
-    memset(&file_info, 0, sizeof(file_stat_t));
-    if (stat(CWD_copy, &file_info) < 0) {
-        _err("Failed to open "); _err(CWD_copy); _err("\n");
-        return;
-    }
-    if (file_info.type != INODE_DIRECTORY) {
-        _err("This is not a directory\n");
-        return;
-    }
-
-    // Finally copy into CWD
-    strcpy(CWD, CWD_copy);
-}
-
-void cmd_echo(char* args) {
-    write(STDOUT_FILENO, args, strlen(args));
-}
-
-int handle_cmd(char* cmd, char* args) {
+int handle_cmd(char* input, char* cmd, char* args) {
     if (strcmp(cmd, "fork") == 0) {
-        cmd_fork(args);
-    } else if (strcmp(cmd, "kill") == 0) {
-        cmd_kill(args);
-    } else if (strcmp(cmd, "ps") == 0) {
-        cmd_ps(args);
-    } else if (strcmp(cmd, "ls") == 0) {
-        cmd_ls(args);
-    }  else if (strcmp(cmd, "stat") == 0) {
-        cmd_stat(args);
-    }  else if (strcmp(cmd, "cd") == 0) {
-        cmd_cd(args);
+        cmd_fork(args, 0);
     } else if (strcmp(cmd, "shutdown") == 0) { // Exit
         return -1;
-    } else if (strcmp(cmd, "echo") == 0) {
-        cmd_echo(args);
-    } else if (strcmp(cmd, "write") == 0) {
-        cmd_write(args);
     } else if (load(cmd) != NULL) {
-        char _cmd[1024];
-        strcpy(_cmd, cmd);
-        strcat(_cmd, " ");
-        strcat(_cmd, args);
-        cmd_fork(_cmd);
+        cmd_fork(input, 1);
     } else {
         err("unknown command\n");
     }
@@ -212,7 +132,7 @@ void main_console() {
         if (parse_cmd(input, cmd, args) < 0) { // Continue if nothing entered
             continue;
         }
-        if (handle_cmd(cmd, args) < 0) {
+        if (handle_cmd(input, cmd, args) < 0) {
             break;
         }
     }

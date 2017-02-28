@@ -1,4 +1,4 @@
-#include "P3.h"
+#include "prog.h"
 
 int is_prime( uint32_t x ) {
     if ( !( x & 1 ) || ( x < 2 ) ) {
@@ -27,8 +27,6 @@ void main_P3(char* args) {
             int r = is_prime(x);
         }
     }
-
-
 
     exit( EXIT_SUCCESS );
 }

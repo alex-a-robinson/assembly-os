@@ -1,4 +1,4 @@
-#include "P4.h"
+#include "prog.h"
 
 uint32_t gcd( uint32_t x, uint32_t y ) {
     if     ( x == y ) {

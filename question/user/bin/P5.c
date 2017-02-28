@@ -1,4 +1,4 @@
-#include "P5.h"
+#include "prog.h"
 
 uint32_t weight( uint32_t x ) {
     x = ( x & 0x55555555 ) + ( ( x >>  1 ) & 0x55555555 );
@@ -25,7 +25,7 @@ void main_P5() {
     err("Returned with");err(ss(b,r));err("\n");
 
     while( 1 ) {
-        puts("P5")
+        puts("P5");
 
         uint32_t lo = 1 <<  8;
         uint32_t hi = 1 << 24;
