@@ -316,8 +316,14 @@ int sys_mkdir(char *path_and_filename) {
     } else {
         inode_t inode;
         int dir_inode_id = path_to_inode_id(mounted, root_dir, path);
-        read_inode(mounted, dir_inode_id, &inode);
-        read_dir(mounted, &inode, &parent_dir);
+        if (read_inode(mounted, dir_inode_id, &inode) < 0) {
+            error("Failed to read inode\n");
+            return -1;
+        }
+        if (read_dir(mounted, &inode, &parent_dir) < 0) {
+            error("Failed to read dir\n");
+            return -1;
+        }
     }
 
     // Create dir
@@ -404,10 +410,18 @@ int sys_rm(char *path_and_filename) {
     }
 
     int inode_id = path_to_inode_id(mounted, &parent_dir, filename);
-    read_inode(mounted, inode_id, &inode);
+    if (read_inode(mounted, inode_id, &inode) < 0) {
+        return -1;
+    }
 
-    delete_file_link(&parent_dir, filename);
-    write_dir(mounted, &parent_dir);
+    if (delete_file_link(&parent_dir, filename) < 0) {
+        error("Failed to delete link\n");
+        return -1;
+    }
+    if (write_dir(mounted, &parent_dir) < 0) {
+        error("Failed to write dir\n");
+        return -1;
+    }
     if (delete_inode(mounted, &inode) < 0) {
         error("Failed to delete inode\n");
         return -1;
