@@ -12,8 +12,6 @@ void gets(char* x, int n) {
 }
 
 /* TODO
- *   - Dynamically allow programs using stack memeory
- *   - Fix phiiosophers
  *   - Clean up code
  *   - Write scheduler
  */

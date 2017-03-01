@@ -2,11 +2,6 @@
 #include "dinning_philosophers.h"
 
 /* TODO
-* - Implement sleep
-* - Implement lock
-* - Implement unlock
-* - Implement shared memory
-*
 * NOTE: Access to pointer is security violation? Pass with it size so can only access some amount
 */
 
