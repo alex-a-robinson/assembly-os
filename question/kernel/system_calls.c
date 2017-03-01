@@ -112,7 +112,7 @@ void sys_yield(ctx_t* ctx) {
     return;
 }
 
-void sys_exec(ctx_t* ctx, void* x, char* args) {
+void sys_exec(ctx_t* ctx, void* x, int interactive, char* args) {
     // https://linux.die.net/man/3/exec
     // Reset current ctx, update pc to new program, and reload the ctx
     if (x == NULL) {
@@ -123,6 +123,10 @@ void sys_exec(ctx_t* ctx, void* x, char* args) {
 
     reset_ctx(&current->ctx, current->pid);
     current->ctx.pc = (uint32_t)(x);
+
+    if (interactive) {
+        current->priority.process_type = INTERACTIVE;
+    }
 
     // Load the arguments
     current->ctx.gpr[0] = (uint32_t)args;

@@ -61,7 +61,7 @@ void sys_fork(ctx_t* ctx);
 void sys_exit(ctx_t* ctx, int x);
 int sys_kill(ctx_t* ctx, pid_t pid, uint32_t sig);
 void sys_yield(ctx_t* ctx);
-void sys_exec(ctx_t* ctx, void* x, char* args);
+void sys_exec(ctx_t* ctx, void* x, int interactive, char* args);
 void fix_orphaned_processes(pid_t ppid);
 void ps_stats(pid_t pid);
 void sys_ps();

@@ -87,13 +87,13 @@ void cmd_fork(char* args, int wait) {
         pid = fork_wait();
     }
 
-    if (0 == pid) {
+    if (pid == 0) {
         char prog_args[100];
         memset(prog_args, 0, 100);
         char prog[100];
         parse_cmd(args, prog, prog_args);
         void* addr = load(prog);
-        exec(addr, prog_args);
+        exec(addr, wait, prog_args);
     }
 
     if (wait) {

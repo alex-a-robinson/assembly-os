@@ -16,6 +16,7 @@ void hilevel_handler_rst(ctx_t* ctx) {
     // Load console as first process
     process(1)->ctx.pc = (uint32_t)(&main_console);
     current = process(1);
+    current->priority.process_type = INTERACTIVE;
     load_ctx(ctx);
 
     /* Configure the mechanism for interrupt handling by
@@ -131,8 +132,9 @@ void hilevel_handler_svc(ctx_t* ctx, uint32_t id) {
         }
         case SYS_EXEC: {
             void* x = (void*)(ctx->gpr[0]); // start executing program at address x e.g. &main_P3
-            char* args = (char*)(ctx->gpr[1]);
-            sys_exec(ctx, x, args);
+            int interactive = (int)(ctx->gpr[1]);
+            char* args = (char*)(ctx->gpr[2]);
+            sys_exec(ctx, x, interactive, args);
             break;
         }
         case SYS_PS: {

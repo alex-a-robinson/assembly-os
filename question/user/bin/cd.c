@@ -1,6 +1,12 @@
 #include "prog.h"
 
 void main_prog_cd(char* path) {
+
+    // No change
+    if (strcmp(path, ".") == 0) {
+        exit(EXIT_SUCCESS);
+    }
+
     // If no args, go to root
     if (strlen(path) == 0) {
         strcpy(CWD, "/");

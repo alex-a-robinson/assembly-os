@@ -71,7 +71,7 @@ void philosopher() {
 
     for (int j=0; j<10; j++) { // 10 iterations
         think_count++;
-        sleep(1); // Thinking
+        yield(); // Thinking
 
         if (lockm(arbitrator) == -1) { // Failed to lock
             exit(EXIT_FAILURE);
@@ -79,11 +79,11 @@ void philosopher() {
 
         int left_fork = get_left_fork(id, arbitrator);
         int right_fork = get_right_fork(id, arbitrator);
-        err("Philosopher #"); err(ss(b,id));err(" has "); err(ss(b,left_fork));err(" left fork(s) and "); err(ss(b,right_fork));err(" right fork(s)\n");
+        //err("Philosopher #"); err(ss(b,id));err(" has "); err(ss(b,left_fork));err(" left fork(s) and "); err(ss(b,right_fork));err(" right fork(s)\n");
         if (left_fork && right_fork) {
             eat_count++;
             err("Philosopher #"); err(ss(b,id));err(" thought "); err(ss(b,think_count));err(" times and eaten "); err(ss(b,eat_count));err(" times\n");
-            sleep(1);
+            //sleep(1);
         }
         put_forks_back(id, arbitrator, left_fork, right_fork);
         unlockm(arbitrator);
@@ -115,7 +115,7 @@ void main_dp() {
         pid_t pid = fork_wait();
         if (0 == pid) {
             char* args = "";
-            exec(&philosopher, args);
+            exec(&philosopher, 0, args);
         } else {
             philosopher_pids[i] = pid;
         }

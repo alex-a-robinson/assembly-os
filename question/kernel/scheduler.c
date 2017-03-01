@@ -54,27 +54,27 @@ pid_t next_pid() {
     return pid;
 }
 
-void calculate_priorities() {
-    pid_t pid;
-    for (int i=0; i < MAX_PROCESSES; i++) {
-        pid = ((current->pid + i) % MAX_PROCESSES) + 1;
-        if (!active_process(pid)) {
-            continue;
-        }
-
-        pcb_t* proc = process(pid);
-        priority_t* priority = &proc->priority;
-
-        // Determin process_type by checking io ratio
-        float io_ratio = ((float)priority->cpu_burst / priority->io_burst);
-        if (io_ratio > IO_INTERACTIVE_THRESHOLD) {
-            priority->process_type = INTERACTIVE;
-        } else {
-            priority->process_type = BACKGROUND;
-        }
-    }
-    return;
-}
+// void calculate_priorities() {
+//     pid_t pid;
+//     for (int i=0; i < MAX_PROCESSES; i++) {
+//         pid = ((current->pid + i) % MAX_PROCESSES) + 1;
+//         if (!active_process(pid)) {
+//             continue;
+//         }
+//
+//         pcb_t* proc = process(pid);
+//         priority_t* priority = &proc->priority;
+//
+//         // Determin process_type by checking io ratio
+//         float io_ratio = ((float)priority->cpu_burst / priority->io_burst);
+//         if (priority->io_burst) {//(io_ratio > IO_INTERACTIVE_THRESHOLD) {
+//             priority->process_type = INTERACTIVE;
+//         } else {
+//             priority->process_type = BACKGROUND;
+//         }
+//     }
+//     return;
+// }
 
 // Update the waiting times for all processes
 void update_waiting() {
@@ -95,7 +95,7 @@ void scheduler(ctx_t* ctx) {
         current->priority.time_left--;
         return;
     }
-    calculate_priorities();
+    //calculate_priorities();
     pid_t pid = next_pid();
     if (pid == -1) {
         // TODO scope error("No processes to schedule");
@@ -103,7 +103,12 @@ void scheduler(ctx_t* ctx) {
     }
     set_current(ctx, pid);
     current->priority.waiting_time = 0;
-    current->priority.time_left = 3; // TODO give it 3 burts
+    if (current->priority.process_type == INTERACTIVE) {
+        current->priority.time_left = 1; // TODO small time slice
+    } else {
+        current->priority.time_left = 6; // NOTE larger time slice
+    }
+
     current->priority.cpu_burst++;
     return;
 }
