@@ -19,7 +19,8 @@
 #include "fs.h"
 
 // Max number of processes
-#define MAX_PROCESSES 6
+#define MAX_PROCESSES 20
+#define PROGRAM_STACK_SIZE 4096
 #define MAX_WAITING 20 // Allow waiting for 20 processes
 #define MAX_WAITERS 5 // Processes which are watching this process
 

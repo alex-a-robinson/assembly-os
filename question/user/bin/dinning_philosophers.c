@@ -77,7 +77,7 @@ void philosopher() {
     //     unlockm(arbitrator);
     // }
 
-    puts("Hello from Philosopher #"); puts(ss(b,id));puts("!\n");
+    err("Hello from Philosopher #"); err(ss(b,id));err("!\n");
 
     for (int j=0; j<10; j++) { // 10 iterations
         think_count++;
@@ -89,10 +89,10 @@ void philosopher() {
 
         int left_fork = get_left_fork(id, arbitrator);
         int right_fork = get_right_fork(id, arbitrator);
-        puts("Philosopher #"); puts(ss(b,id));puts(" has "); puts(ss(b,left_fork));puts(" left fork(s) and "); puts(ss(b,right_fork));puts(" right fork(s)\n");
+        err("Philosopher #"); err(ss(b,id));err(" has "); err(ss(b,left_fork));err(" left fork(s) and "); err(ss(b,right_fork));err(" right fork(s)\n");
         if (left_fork && right_fork) {
             eat_count++;
-            puts("Philosopher #"); puts(ss(b,id));puts(" thought "); puts(ss(b,think_count));puts(" times and eaten "); puts(ss(b,eat_count));puts(" times\n");
+            err("Philosopher #"); err(ss(b,id));err(" thought "); err(ss(b,think_count));err(" times and eaten "); err(ss(b,eat_count));err(" times\n");
             sleep(1);
         }
         put_forks_back(id, arbitrator, left_fork, right_fork);
@@ -137,6 +137,7 @@ void main_dp() {
         //err("Waiting for: "); err(ss(b, philosopher_pids[i])); err("\n");
         int r = waitp(philosopher_pids[i]);
         err("-Philosopher #"); err(ss(b,i));err(" ate "); err(ss(b,r)); err("\n");
+
     }
 
     // Unshare memory

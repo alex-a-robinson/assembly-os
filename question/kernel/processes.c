@@ -5,17 +5,19 @@ extern int BURSTS;
 
 // Stacks
 extern uint32_t tos_P1;
-extern uint32_t tos_P2;
-extern uint32_t tos_P3;
-extern uint32_t tos_P4;
-extern uint32_t tos_P5;
-extern uint32_t tos_P6;
+
 // TODO dynamically by adding to pointers
-uint32_t sps[] = {(uint32_t)(&tos_P1), (uint32_t)(&tos_P2), (uint32_t)(&tos_P3), (uint32_t)(&tos_P4), (uint32_t)(&tos_P5), (uint32_t)(&tos_P6)};
+uint32_t sps[MAX_PROCESSES];
 
 // Return process
 pcb_t* process(pid_t pid) {
     return &pcb[pid-1];
+}
+
+void init_stack_pointers() {
+    for (int i=0; i < MAX_PROCESSES; i++) {
+        sps[i] = (uint32_t)(((uint32_t)(&tos_P1)) + PROGRAM_STACK_SIZE * i);
+    }
 }
 
 pcb_t* parent_process(pid_t pid) {
@@ -67,6 +69,7 @@ int active_process(pid_t pid) {
 }
 
 void init_pcbs() {
+    init_stack_pointers();
     for (pid_t pid=1; pid <= MAX_PROCESSES; pid++) {
         new_process(pid, 0);
     }

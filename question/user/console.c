@@ -12,8 +12,6 @@ void gets(char* x, int n) {
 }
 
 /* TODO
- *   - mkdir, rmdir
- *   - touch, rm
  *   - Dynamically allow programs using stack memeory
  *   - Fix phiiosophers
  *   - Clean up code
