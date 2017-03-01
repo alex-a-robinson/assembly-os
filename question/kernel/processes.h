@@ -19,10 +19,14 @@
 #include "fs.h"
 
 // Max number of processes
-#define MAX_PROCESSES 20
+#define MAX_PROCESSES 30
 #define PROGRAM_STACK_SIZE 4096
 #define MAX_WAITING 20 // Allow waiting for 20 processes
 #define MAX_WAITERS 5 // Processes which are watching this process
+
+#define BACKGROUND  ( 0 )
+#define INTERACTIVE ( 1 )
+#define IO_INTERACTIVE_THRESHOLD (0.01)
 
 typedef int pid_t;
 
@@ -36,6 +40,8 @@ typedef struct {
   int cpu_burst;
   int arrival_time;
   int time_left;
+  int waiting_time;
+  int process_type;
 } priority_t;
 
 typedef struct {

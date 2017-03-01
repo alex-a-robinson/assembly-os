@@ -400,6 +400,7 @@ int _slow( uint32_t x ) {
 
 void sleep(int t) {
     // TODO use sleeping flag on process
+    yield();
     int x = 0;
     for (int i=0; i<4*t; i++) {
         uint32_t lo = 1 <<  8;

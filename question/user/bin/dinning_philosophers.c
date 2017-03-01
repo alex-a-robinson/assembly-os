@@ -62,15 +62,10 @@ void philosopher() {
     err("Getting ID\n");
     int id = get_id();
 
-    // Once all the IDs are given out, start
-    // while (1) {
-    //     sleep(2);
-    //     lockm(arbitrator);
-    //     if (arbitrator->state) {
-    //         break;
-    //     }
-    //     unlockm(arbitrator);
-    // }
+    // Wait until the state is 1
+    while(arbitrator->state == 0) {
+        yield();
+    }
 
     err("Hello from Philosopher #"); err(ss(b,id));err("!\n");
 

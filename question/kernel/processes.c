@@ -34,6 +34,8 @@ void reset_priority(pcb_t* p) {
     p->priority.cpu_burst = 0;
     p->priority.arrival_time = BURSTS;
     p->priority.time_left = 0;
+    p->priority.waiting_time = 0;
+    p->priority.process_type = BACKGROUND;
 }
 
 void reset_ctx(ctx_t* ctx, pid_t pid) {

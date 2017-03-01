@@ -1,6 +1,6 @@
 #ifndef __DINNING_PHILOSOPHERS_H
 #define __DINNING_PHILOSOPHERS_H
 
-#define PHILOSOPHERS 3
+#define PHILOSOPHERS 16
 
 #endif

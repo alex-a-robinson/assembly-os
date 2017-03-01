@@ -194,7 +194,7 @@ int read_device(int fd, char* x, int n) {
 }
 
 int sys_write(int fd, char* x, int n) {
-    current->priority.io_burst++;
+    //current->priority.io_burst++;
 
     if (process_has_file_permission(current->pid, fd, WRITE) < 0) {
         error("File not open\n");
@@ -225,7 +225,6 @@ int sys_write(int fd, char* x, int n) {
 }
 
 int sys_read(int fd, char* x, int n) { // NOTE BLOCKING
-    current->priority.io_burst++;
 
     if (process_has_file_permission(current->pid, fd, READ) < 0) {
         error("File not open\n");
@@ -240,6 +239,7 @@ int sys_read(int fd, char* x, int n) { // NOTE BLOCKING
 
     // If file is a device
     if (inode.type == INODE_DEVICE) {
+        current->priority.io_burst++;
         return read_device(fd, x, n);
     } else if (inode.type != INODE_FILE) {
         error("Cannot read this type of file\n");

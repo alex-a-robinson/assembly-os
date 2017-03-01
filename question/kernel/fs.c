@@ -561,7 +561,11 @@ int add_fd(superblock_t* superblock, file_descriptor_table_t* fdtable, int inode
     // Check the file is not already open
     for (int i=0; i < fdtable->count; i++) {
         if (fdtable->open[i].inode_id == inode_id) {
-            return -1;
+            if (fdtable->open[i].flags == READ_GLOBAL || fdtable->open[i].flags == WRITE_GLOBAL) {
+                return fdtable->open[i].id;
+            } else {
+                return -1;
+            }
         }
     }
 
@@ -682,6 +686,8 @@ int open_file(superblock_t* superblock, file_descriptor_table_t* fdtable, direct
 
 // Close a file, 0 on success
 int close_file(superblock_t* superblock, file_descriptor_table_t* fdtable, int file_descriptor_id) {
+
+
     // Check the file is not already open
     int index = -1;
     for (int i=0; i < fdtable->count; i++) {
@@ -694,6 +700,11 @@ int close_file(superblock_t* superblock, file_descriptor_table_t* fdtable, int f
     // File not open
     if (index == -1) {
         return -1;
+    }
+
+    // Don't close global files
+    if (fdtable->open[index].flags == WRITE_GLOBAL || fdtable->open[index].flags == READ_GLOBAL) {
+        return 0;
     }
 
     // Update number of open files

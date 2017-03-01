@@ -1,9 +1,10 @@
 #include "utilities.h"
 
 void error(char* msg) {
+    char* x = msg;
     PL011_t* device = UART1;
-    for (int i = 0; i < strlen(msg); i++) {
-        PL011_putc(device, *msg++, true); // Write to STDERR
+    for (int i = 0; i < strlen(x); i++) {
+        PL011_putc(device, *x++, true); // Write to STDERR
     }
 }
 
